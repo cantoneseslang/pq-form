@@ -12,6 +12,8 @@ html,body{margin:0;padding:0;font-family:'Noto Sans JP',system-ui,-apple-system,
 header{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin-bottom:16px}
 header h1{font-size:20px;margin:0;font-weight:700}
 header small{display:block;color:var(--muted);font-weight:400}
+.header-flex{display:flex;align-items:center;gap:12px}
+.logo-left{height:28px;width:auto}
 
 .toolbar{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:16px}
 .toolbar-row{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:8px 0}
@@ -117,6 +119,7 @@ td.name input{font-size:14px}
 .w-560{width:560px}
 
 footer{color:var(--muted);margin:14px 4px}
+footer{text-align:center;color:#6c757d;margin:18px 0}
 
 
 /* 時刻入力の各ブラウザ用ピッカー/スピン/クリアを非表示 */
