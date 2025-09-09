@@ -1,7 +1,4 @@
 {
-  "functions": {
-    "api/**/*.mjs": { "runtime": "edge" }
-  },
   "headers": [
     { "source": "/(.*)", "headers": [ { "key": "Cache-Control", "value": "no-store" } ] }
   ]
