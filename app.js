@@ -24,11 +24,11 @@
     tr.innerHTML = `
       <td><input type="time" /></td>
       <td><input type="time" /></td>
-      <td><input type="text" value="VUU030262008MM3000" /></td>
+      <td><input type="text" value="" placeholder="" /></td>
       <td><input type="text" placeholder="厚度" /></td>
       <td><input type="text" placeholder="圓度" /></td>
       <td><input type="text" placeholder="高度" /></td>
-      <td class="name"><input type="text" value="W-Metal Angle 20mmx20mmx20mmx20mmx0.8mmx3000mm" /></td>
+      <td class="name"><input type="text" value="" placeholder="" /></td>
       <td><input type="text" placeholder="長度" /></td>
       <td class="chk"><input type="checkbox" /></td>
       <td class="chk"><input type="checkbox" /></td>
