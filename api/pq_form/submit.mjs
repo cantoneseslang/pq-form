@@ -2,40 +2,43 @@ import { getSheetsClient, readRange, writeRowA1, findFirstEmptyRowInBlock } from
 
 export const config = { runtime: 'nodejs' };
 
-function noStoreHeaders() {
-  return {
-    'Cache-Control': 'no-store',
-    'Content-Type': 'application/json; charset=utf-8'
-  };
-}
-
-export default async function handler(req) {
+export default async function handler(req, res) {
   if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ success: false, error: 'Method not allowed' }), { status: 405, headers: noStoreHeaders() });
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
   try {
-    const body = await req.json();
+    const body = req.body ?? (await new Promise((resolve, reject) => {
+      let data = '';
+      req.on('data', chunk => { data += chunk; });
+      req.on('end', () => { try { resolve(JSON.parse(data || '{}')); } catch (e) { reject(e); } });
+      req.on('error', reject);
+    }));
+
     const rows = body?.rows || [];
     if (!Array.isArray(rows) || rows.length === 0) {
-      return new Response(JSON.stringify({ success: false, error: 'rows is required' }), { status: 400, headers: noStoreHeaders() });
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(400).json({ success: false, error: 'rows is required' });
     }
 
     const { sheetName } = getSheetsClient();
-    // Read A8:T16 block
     const blockRange = `${sheetName}!A8:T16`;
     const block = await readRange(blockRange);
     const targetRow = findFirstEmptyRowInBlock(block);
     if (!targetRow) {
-      return new Response(JSON.stringify({ success: false, error: '表の範囲(8-16)が満杯です' }), { status: 409, headers: noStoreHeaders() });
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(409).json({ success: false, error: '表の範囲(8-16)が満杯です' });
     }
 
     const values = rows[0];
     const writeRange = `${sheetName}!A${targetRow}:T${targetRow}`;
     await writeRowA1(writeRange, values);
 
-    return new Response(JSON.stringify({ success: true, row: targetRow, range: writeRange }), { status: 200, headers: noStoreHeaders() });
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({ success: true, row: targetRow, range: writeRange });
   } catch (e) {
-    return new Response(JSON.stringify({ success: false, error: e?.message || String(e) }), { status: 500, headers: noStoreHeaders() });
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(500).json({ success: false, error: e?.message || String(e) });
   }
 }
 

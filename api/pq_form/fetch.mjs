@@ -2,21 +2,18 @@ import { getSheetsClient, readRange } from '../../../lib/sheets.js';
 
 export const config = { runtime: 'nodejs' };
 
-function noStoreHeaders() {
-  return { 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8' };
-}
-
-export default async function handler(req) {
+export default async function handler(req, res) {
   try {
-    const url = new URL(req.url);
+    const url = new URL(req.url, `http://${req.headers.host}`);
     const dateParam = url.searchParams.get('date') || '';
     const { sheetName } = getSheetsClient();
-    // ひとまず日付によらずA8:T16を返却（クライアントでフィルタ可）。必要なら列A,Bでマッチングを追加
     const range = `${sheetName}!A8:T16`;
     const values = await readRange(range);
-    return new Response(JSON.stringify({ success: true, date: dateParam, rows: values }), { headers: noStoreHeaders() });
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(200).json({ success: true, date: dateParam, rows: values });
   } catch (e) {
-    return new Response(JSON.stringify({ success: false, error: e?.message || String(e) }), { status: 500, headers: noStoreHeaders() });
+    res.setHeader('Cache-Control', 'no-store');
+    return res.status(500).json({ success: false, error: e?.message || String(e) });
   }
 }
 
