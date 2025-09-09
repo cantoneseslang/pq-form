@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PQ-Form 生產紀錄</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>PQ-Form 生產紀錄</h1>
+      <small>工場內部用｜本機儲存＋Google Sheets 送出</small>
+    </header>
+
+    <div class="toolbar">
+      <div class="toolbar-row">
+        <div class="toolbar-group">
+          <span class="group-title">產品種類：</span>
+          <label><input type="checkbox" name="type" value="企筒" />企筒</label>
+          <label><input type="checkbox" name="type" value="地槽" />地槽</label>
+          <label><input type="checkbox" name="type" value="鐵角" />鐵角</label>
+          <label><input type="checkbox" name="type" value="批灰角" />批灰角</label>
+          <label><input type="checkbox" name="type" value="W角" />W角</label>
+          <label><input type="checkbox" name="type" value="闊槽" />闊槽</label>
+          <label><input type="checkbox" name="type" value="C槽" />C槽</label>
+          <label><input type="checkbox" name="type" value="其他" />其他</label>
+          <span class="other-wrap">
+            <span>其他：</span>
+            <input id="typeOther" class="other-input" type="text" placeholder="請輸入" />
+          </span>
+        </div>
+      </div>
+
+      <div class="toolbar-row">
+        <div class="toolbar-group">
+          <span class="group-title">生產機械名稱：</span>
+          <label><input type="checkbox" name="machine" value="1號滾筒成形機" />1號滾筒成形機</label>
+          <label><input type="checkbox" name="machine" value="2號滾筒成形機" />2號滾筒成形機</label>
+          <label><input type="checkbox" name="machine" value="3號滾筒成形機" />3號滾筒成形機</label>
+          <label><input type="checkbox" name="machine" value="4號滾筒成形機" />4號滾筒成形機</label>
+          <label><input type="checkbox" name="machine" value="5號滾筒成形機" />5號滾筒成形機</label>
+        </div>
+      </div>
+
+      <div class="toolbar-row">
+        <div class="toolbar-group">
+          <span class="group-title">日期：</span>
+          <input id="year" class="date-input" type="text" placeholder="YYYY" />
+          <input id="month" class="date-input" type="text" placeholder="MM" />
+          <input id="day" class="date-input" type="text" placeholder="DD" />
+        </div>
+        <div class="toolbar-actions">
+          <button id="addRowBtn" class="btn" type="button">新增列</button>
+          <button id="removeRowBtn" class="btn btn-secondary" type="button">刪除末列</button>
+          <button id="clearBtn" class="btn btn-secondary" type="button">清空全部</button>
+          <button id="saveLocalBtn" class="btn" type="button">暫存（本機）</button>
+          <button id="loadByDateBtn" class="btn btn-primary" type="button">由日期載入</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <colgroup>
+          <col style="width:70px">   <!-- A 上料時間 -->
+          <col style="width:70px">   <!-- B 開始時間 -->
+          <col style="width:180px">  <!-- C 產品編號 -->
+          <col style="width:56px">   <!-- D 材料厚度 -->
+          <col style="width:56px">   <!-- E 圓度 -->
+          <col style="width:56px">   <!-- F 高度 -->
+          <col style="width:420px"> <!-- G 產品名稱 -->
+          <col style="width:56px">   <!-- K 長度 -->
+          <col style="width:44px">   <!-- L 長度公差 -->
+          <col style="width:44px">   <!-- M 切面尺寸 -->
+          <col style="width:44px">   <!-- N 左右弯曲 -->
+          <col style="width:44px">   <!-- O 上下弯曲 -->
+          <col style="width:44px">   <!-- P 扭曲 -->
+          <col style="width:80px">   <!-- Q 轉機員/檢查員 -->
+          <col style="width:70px">  <!-- R 完成時間 -->
+          <col style="width:80px">  <!-- S 備註 -->
+          <col style="width:60px">  <!-- T 其他 -->
+          <col style="width:160px">  <!-- 操作 -->
+        </colgroup>
+        <thead>
+          <tr>
+            <th class="w-70">上料時間</th>  <!-- A -->
+            <th class="w-70">開始時間</th>  <!-- B -->
+            <th class="w-180">產品編號</th>  <!-- C -->
+            <th class="w-56 th-stacked">材<br>料<br>厚<br>度</th>   <!-- D -->
+            <th class="w-56 th-stacked">圓<br>度</th>       <!-- E -->
+            <th class="w-56 th-stacked">高<br>度</th>       <!-- F -->
+            <th class="w-420">產品名稱</th>  <!-- G -->
+            <th class="w-56 th-stacked">長<br>度</th>       <!-- K（H/I/Jは空扱い） -->
+            <th class="w-44 th-stacked">長<br>度<br>公<br>差</th>   <!-- L -->
+            <th class="w-44 th-stacked">切<br>面<br>尺<br>寸</th>   <!-- M -->
+            <th class="w-44 th-stacked">左<br>右<br>弯<br>曲</th>   <!-- N -->
+            <th class="w-44 th-stacked">上<br>下<br>弯<br>曲</th>   <!-- O -->
+            <th class="w-44 th-stacked">扭<br>曲</th>       <!-- P -->
+            <th class="w-80">轉機員/檢查員</th> <!-- Q -->
+            <th class="w-70">完成時間</th>  <!-- R -->
+            <th class="w-80">備註</th>      <!-- S -->
+            <th class="w-60">其他</th>      <!-- T -->
+            <th class="w-160">操作</th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+
+    <footer>
+      版本 2025-08-22｜此頁面在本機 5508 端口提供（`python -m http.server 5508`）
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+  <noscript>請啟用JavaScript</noscript>
+  <script>
+    // 初始化時、工具列のチェック状態や列幅調整は app.js が担当
+  </script>
+</body>
+<style>
+  /* 時刻入力の時計アイコン等は styles.css で非表示化済み */
+</style>
+</html>
+
+
+

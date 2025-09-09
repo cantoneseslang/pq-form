@@ -1,0 +1,11 @@
+{
+  "name": "pq-form",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "googleapis": "^131.0.0"
+  }
+}
+
+
