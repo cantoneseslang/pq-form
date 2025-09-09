@@ -34,6 +34,7 @@ header small{display:block;color:var(--muted);font-weight:400}
 }
 .group-title{font-weight:700;color:var(--muted)}
 .date-input{width:90px;padding:8px;border:1px solid var(--border);border-radius:6px}
+.suffix{margin:0 6px;color:var(--muted);font-weight:600}
 .toolbar-actions{display:flex;gap:8px;margin-left:auto}
 .other-wrap{display:flex;align-items:center;gap:8px}
 .other-input{width:160px;padding:8px;border:1px solid var(--border);border-radius:6px}
