@@ -44,7 +44,7 @@ header small{display:block;color:var(--muted);font-weight:400}
 
 .table-wrap{background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:auto}
 table{width:100%;border-collapse:collapse;min-width:1600px;table-layout:fixed}
-thead th{position:sticky;top:0;background:#fafbfc;border-bottom:2px solid var(--border);padding:0 0;text-align:center;font-size:12px}
+thead th{position:sticky;top:0;background:#fafbfc;border-bottom:2px solid var(--border);padding:6px 0;text-align:center;font-size:12px}
 /* 縦書きヘッダー（チェック群） */
 .th-vertical{
   writing-mode:vertical-rl;
