@@ -1,6 +1,6 @@
 import { getSheetsClient, readRange, writeRowA1, findFirstEmptyRowInBlock } from '../../../lib/sheets.js';
 
-export const config = { runtime: 'nodejs20' };
+export const config = { runtime: 'nodejs' };
 
 function noStoreHeaders() {
   return {

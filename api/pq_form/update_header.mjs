@@ -1,6 +1,6 @@
 import { getSheetsClient, writeRanges } from '../../../lib/sheets.js';
 
-export const config = { runtime: 'nodejs20' };
+export const config = { runtime: 'nodejs' };
 
 function noStoreHeaders() {
   return { 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8' };
