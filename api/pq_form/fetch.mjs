@@ -1,4 +1,4 @@
-import { getSheetsClient, readRange } from '../../../lib/sheets.js';
+import { getSheetsClient, readRange } from '../../lib/sheets.js';
 
 export const config = { runtime: 'nodejs' };
 

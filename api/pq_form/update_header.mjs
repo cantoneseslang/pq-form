@@ -1,4 +1,4 @@
-import { getSheetsClient, writeRanges } from '../../../lib/sheets.js';
+import { getSheetsClient, writeRanges } from '../../lib/sheets.js';
 
 export const config = { runtime: 'nodejs' };
 

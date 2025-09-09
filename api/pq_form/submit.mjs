@@ -1,4 +1,4 @@
-import { getSheetsClient, readRange, writeRowA1, findFirstEmptyRowInBlock } from '../../../lib/sheets.js';
+import { getSheetsClient, readRange, writeRowA1, findFirstEmptyRowInBlock } from '../../lib/sheets.js';
 
 export const config = { runtime: 'nodejs' };
 
