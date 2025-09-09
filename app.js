@@ -4,6 +4,7 @@
   const isStaticDev = location.port === '5508';
   const API_BASE = (isLocal && isStaticDev) ? 'http://localhost:5013' : '';
   const tableBody = document.getElementById('tableBody');
+  const STORAGE_KEY = 'pq-form-ui-v2';
   const addRowBtn = document.getElementById('addRowBtn');
   const removeRowBtn = document.getElementById('removeRowBtn');
   const clearBtn = document.getElementById('clearBtn');
@@ -80,7 +81,7 @@
         d: document.getElementById('day').value,
         rows: [...tableBody.querySelectorAll('tr')].map(tr=>[...tr.querySelectorAll('input,select')].map(el=>el.value))
       };
-      localStorage.setItem('pq-form-ui', JSON.stringify(data));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
     }catch(e){/* noop */}
   }
 
@@ -124,8 +125,8 @@
 
   function restoreLocal(){
     try{
-      const raw = localStorage.getItem('pq-form-ui');
-      if(!raw){ addRow(3); return; }
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw){ addRow(8); return; }
       const data = JSON.parse(raw);
       document.getElementById('year').value = data.y || '';
       document.getElementById('month').value = data.m || '';
@@ -136,8 +137,8 @@
         [...tr.querySelectorAll('input,select')].forEach((el,i)=>{ el.value = r[i]||''; });
         tableBody.appendChild(tr);
       });
-      if(tableBody.children.length===0) addRow(3);
-    }catch(e){ addRow(3); }
+      if(tableBody.children.length===0) addRow(8);
+    }catch(e){ addRow(8); }
     // 初期ロード後に列幅調整
     adjustNameColumnWidth();
   }
