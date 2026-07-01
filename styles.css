@@ -234,7 +234,7 @@ tbody .chk input[type="checkbox"]:checked::after{
 .w-160.btns{width:160px;text-align:center}
 
 .product-match-picker{margin-top:4px}
-.product-match-select{width:100%;max-width:189px;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:#fff}
+.product-match-select{width:100%;max-width:220px;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:#fff}
 .product-resolve-hint{font-size:11px;color:#c0392b;line-height:1.4}
 .product-hint-outside{margin:8px 0 0;padding:0 12px 4px;font-size:11px;line-height:1.5}
 .product-hint-outside--error{color:#c0392b}

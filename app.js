@@ -1317,9 +1317,9 @@
     }catch(e){/* noop */}
   }
 
-  // 產品名稱の列幅（上下テーブル共通・固定189px）
+  // 產品名稱の列幅（上下テーブル共通・固定220px）
   function adjustNameColumnWidth(){
-    const width = 189;
+    const width = 220;
     document.querySelectorAll('thead th:nth-child(7)').forEach(th => {
       if (th.textContent.trim() === '產品名稱') th.style.width = width + 'px';
     });
