@@ -602,35 +602,28 @@
     return code === NOT_FOUND_CODE || name === NOT_FOUND_NAME;
   }
 
+  function refreshProductNotFoundUI(codeInput, nameInput) {
+    if (!codeInput || !nameInput) return;
+    const active = isProductNotFound(codeInput.value, nameInput.value);
+    codeInput.classList.toggle('product-not-found', active);
+    nameInput.classList.toggle('product-not-found', active);
+  }
+
   function setProductNotFoundUI(codeInput, nameInput, active) {
     if (!codeInput || !nameInput) return;
     if (active) {
       codeInput.value = NOT_FOUND_CODE;
       nameInput.value = NOT_FOUND_NAME;
-      codeInput.classList.add('product-not-found');
-      nameInput.classList.add('product-not-found');
-      return;
+    } else {
+      if (codeInput.value === NOT_FOUND_CODE) codeInput.value = '';
+      if (nameInput.value === NOT_FOUND_NAME) nameInput.value = '';
     }
-    if (codeInput.value === NOT_FOUND_CODE) codeInput.value = '';
-    if (nameInput.value === NOT_FOUND_NAME) nameInput.value = '';
-    codeInput.classList.remove('product-not-found');
-    nameInput.classList.remove('product-not-found');
+    refreshProductNotFoundUI(codeInput, nameInput);
   }
 
   function syncProductNotFoundUI(sourceCodeInput, sourceNameInput, targetCodeInput, targetNameInput) {
-    if (!targetCodeInput || !targetNameInput) return;
-    const active =
-      sourceCodeInput?.classList.contains('product-not-found') ||
-      sourceNameInput?.classList.contains('product-not-found') ||
-      isProductNotFound(sourceCodeInput?.value, sourceNameInput?.value) ||
-      isProductNotFound(targetCodeInput.value, targetNameInput.value);
-    if (active) {
-      targetCodeInput.classList.add('product-not-found');
-      targetNameInput.classList.add('product-not-found');
-    } else {
-      targetCodeInput.classList.remove('product-not-found');
-      targetNameInput.classList.remove('product-not-found');
-    }
+    refreshProductNotFoundUI(sourceCodeInput, sourceNameInput);
+    refreshProductNotFoundUI(targetCodeInput, targetNameInput);
   }
 
   function clearProductNotFoundFields(row) {
@@ -1212,6 +1205,7 @@
 
     const nameInput = tr.querySelector('td:nth-child(7) input');
     if (nameInput) nameInput.value = data.name || '';
+    refreshProductNotFoundUI(productInput, nameInput);
 
     const lengthInput = tr.querySelector('td:nth-child(8) input');
     if (lengthInput) lengthInput.value = data.length || '';
@@ -1324,7 +1318,9 @@
     tr.querySelector('td:nth-child(6) input').value = data.width2 || '';
     tr.querySelector('td:nth-child(7) input').value = data.height || '';
     tr.querySelector('td:nth-child(8) input').value = data.productNo || '';
-    tr.querySelector('td:nth-child(9) input').value = data.name || '';
+    const materialNameInput = tr.querySelector('td:nth-child(9) input');
+    materialNameInput.value = data.name || '';
+    refreshProductNotFoundUI(tr.querySelector('td:nth-child(8) input'), materialNameInput);
     tr.querySelector('td:nth-child(10) input').value = data.length || '';
     tr.querySelector('td:nth-child(11) input').value = data.qty || '';
 

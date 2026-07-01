@@ -239,7 +239,16 @@ tbody .chk input[type="checkbox"]:checked::after{
 .product-hint-outside{margin:8px 0 0;padding:0 12px 4px;font-size:11px;line-height:1.5}
 .product-hint-outside--error{color:#c0392b}
 .product-hint-outside--success{color:#1e7e34;font-weight:700;font-size:12px}
-input.product-not-found{color:#c0392b;font-weight:700;font-style:italic;background:#fff5f5}
+input.product-not-found,
+tbody input.product-not-found{
+  color:#c0392b !important;
+  font-weight:700 !important;
+  font-style:italic !important;
+  background:#fff5f5 !important;
+  letter-spacing:normal !important;
+  font-family:'Noto Sans JP',system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue','Hiragino Kaku Gothic ProN','Hiragino Sans',Arial,sans-serif !important;
+  text-transform:none !important;
+}
 .w-380{width:380px}
 .w-760{width:760px}
 
