@@ -239,7 +239,7 @@ tbody .chk input[type="checkbox"]:checked::after{
 .product-hint-outside{margin:8px 0 0;padding:0 12px 4px;font-size:11px;line-height:1.5}
 .product-hint-outside--error{color:#c0392b}
 .product-hint-outside--success{color:#1e7e34;font-weight:700;font-size:12px}
-input.product-not-found{color:#c0392b;font-style:italic;background:#fff5f5}
+input.product-not-found{color:#c0392b;font-weight:700;font-style:italic;background:#fff5f5}
 .w-380{width:380px}
 .w-760{width:760px}
 

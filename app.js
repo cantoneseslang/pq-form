@@ -598,20 +598,49 @@
     return !!(spec.thickness && spec.width && spec.height && spec.length);
   }
 
+  function isProductNotFound(code, name) {
+    return code === NOT_FOUND_CODE || name === NOT_FOUND_NAME;
+  }
+
+  function setProductNotFoundUI(codeInput, nameInput, active) {
+    if (!codeInput || !nameInput) return;
+    if (active) {
+      codeInput.value = NOT_FOUND_CODE;
+      nameInput.value = NOT_FOUND_NAME;
+      codeInput.classList.add('product-not-found');
+      nameInput.classList.add('product-not-found');
+      return;
+    }
+    if (codeInput.value === NOT_FOUND_CODE) codeInput.value = '';
+    if (nameInput.value === NOT_FOUND_NAME) nameInput.value = '';
+    codeInput.classList.remove('product-not-found');
+    nameInput.classList.remove('product-not-found');
+  }
+
+  function syncProductNotFoundUI(sourceCodeInput, sourceNameInput, targetCodeInput, targetNameInput) {
+    if (!targetCodeInput || !targetNameInput) return;
+    const active =
+      sourceCodeInput?.classList.contains('product-not-found') ||
+      sourceNameInput?.classList.contains('product-not-found') ||
+      isProductNotFound(sourceCodeInput?.value, sourceNameInput?.value) ||
+      isProductNotFound(targetCodeInput.value, targetNameInput.value);
+    if (active) {
+      targetCodeInput.classList.add('product-not-found');
+      targetNameInput.classList.add('product-not-found');
+    } else {
+      targetCodeInput.classList.remove('product-not-found');
+      targetNameInput.classList.remove('product-not-found');
+    }
+  }
+
   function clearProductNotFoundFields(row) {
     const codeInput = row.querySelector('td:nth-child(3) input');
     const nameInput = row.querySelector('td:nth-child(7) input');
-    if (codeInput?.value === NOT_FOUND_CODE) codeInput.value = '';
-    if (nameInput?.value === NOT_FOUND_NAME) nameInput.value = '';
-    codeInput?.classList.remove('product-not-found');
-    nameInput?.classList.remove('product-not-found');
+    setProductNotFoundUI(codeInput, nameInput, false);
   }
 
   function showProductNotFound(codeInput, nameInput) {
-    codeInput.value = NOT_FOUND_CODE;
-    nameInput.value = NOT_FOUND_NAME;
-    codeInput.classList.add('product-not-found');
-    nameInput.classList.add('product-not-found');
+    setProductNotFoundUI(codeInput, nameInput, true);
   }
 
   function showProductMatchPicker(row, matches, onPick) {
@@ -838,6 +867,10 @@
     if (heightInput) heightInput.value = height;
     if (codeInput) codeInput.value = code;
     if (nameInput) nameInput.value = name;
+
+    const topCodeInput = topRow.querySelector('td:nth-child(3) input');
+    const topNameInput = topRow.querySelector('td:nth-child(7) input');
+    syncProductNotFoundUI(topCodeInput, topNameInput, codeInput, nameInput);
   }
 
   function syncAllTopToMaterial(pageRoot) {
