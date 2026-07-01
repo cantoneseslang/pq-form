@@ -168,6 +168,54 @@
       </table>
     </div>
 
+    <!-- 生產紀錄 -->
+    <div class="table-wrap production-record-wrap" style="margin-top: 16px;">
+      <div class="production-record-header">
+        <h2>生產紀錄</h2>
+        <div class="production-record-meta">
+          <span id="productionRecordCount" class="production-record-count">0 筆</span>
+          <button id="refreshProductionRecordsBtn" class="btn btn-secondary" type="button">重新載入</button>
+        </div>
+      </div>
+      <table class="production-record-table">
+        <colgroup>
+          <col style="width:100px">
+          <col style="width:140px">
+          <col style="width:200px">
+          <col style="width:50px">
+          <col style="width:50px">
+          <col style="width:50px">
+          <col style="width:50px">
+          <col style="width:70px">
+          <col style="width:60px">
+          <col style="width:60px">
+          <col style="width:60px">
+          <col style="width:120px">
+          <col style="width:50px">
+          <col style="width:80px">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>期日</th>
+            <th>產品編號</th>
+            <th>產品名稱</th>
+            <th class="th-stacked">材<br>料<br>厚<br>度</th>
+            <th class="th-stacked">闊<br>度</th>
+            <th class="th-stacked">高<br>度</th>
+            <th class="th-stacked">長<br>度</th>
+            <th>轉機員/檢查員</th>
+            <th class="th-stacked">上<br>料</th>
+            <th class="th-stacked">開<br>始</th>
+            <th class="th-stacked">完<br>成</th>
+            <th>用料-產品編號</th>
+            <th class="th-stacked">數<br>量</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="productionRecordBody" data-page="molding"></tbody>
+      </table>
+    </div>
+
     <footer>
       Copyright © Kirii (Hong Kong) Limited. All Rights Reserved.
     </footer>
@@ -324,12 +372,120 @@
       </table>
     </div>
 
+    <!-- 生產紀錄 -->
+    <div class="table-wrap production-record-wrap" style="margin-top: 16px;">
+      <div class="production-record-header">
+        <h2>生產紀錄</h2>
+        <div class="production-record-meta">
+          <span id="productionRecordCount2" class="production-record-count">0 筆</span>
+          <button id="refreshProductionRecordsBtn2" class="btn btn-secondary" type="button">重新載入</button>
+        </div>
+      </div>
+      <table class="production-record-table">
+        <colgroup>
+          <col style="width:100px">
+          <col style="width:140px">
+          <col style="width:200px">
+          <col style="width:50px">
+          <col style="width:50px">
+          <col style="width:50px">
+          <col style="width:50px">
+          <col style="width:70px">
+          <col style="width:60px">
+          <col style="width:60px">
+          <col style="width:60px">
+          <col style="width:120px">
+          <col style="width:50px">
+          <col style="width:80px">
+        </colgroup>
+        <thead>
+          <tr>
+            <th>期日</th>
+            <th>產品編號</th>
+            <th>產品名稱</th>
+            <th class="th-stacked">材<br>料<br>厚<br>度</th>
+            <th class="th-stacked">闊<br>度</th>
+            <th class="th-stacked">高<br>度</th>
+            <th class="th-stacked">長<br>度</th>
+            <th>轉機員/檢查員</th>
+            <th class="th-stacked">上<br>料</th>
+            <th class="th-stacked">開<br>始</th>
+            <th class="th-stacked">完<br>成</th>
+            <th>用料-產品編號</th>
+            <th class="th-stacked">數<br>量</th>
+            <th>操作</th>
+          </tr>
+        </thead>
+        <tbody id="productionRecordBody2" data-page="auto"></tbody>
+      </table>
+    </div>
+
     <footer>
       Copyright © Kirii (Hong Kong) Limited. All Rights Reserved.
     </footer>
   </div>
 
-    <script src="app.js?v=20260701-15"></script>
+  <div id="productionRecordModal" class="production-record-modal" hidden>
+    <div class="production-record-modal__panel" role="dialog" aria-labelledby="productionRecordModalTitle">
+      <div class="production-record-modal__header">
+        <h3 id="productionRecordModalTitle">修正生產紀錄</h3>
+        <button type="button" id="productionRecordModalClose" class="btn btn-secondary">關閉</button>
+      </div>
+      <form id="productionRecordEditForm" class="production-record-modal__body">
+        <input type="hidden" id="editRecordId" />
+        <fieldset class="production-record-fieldset">
+          <legend>上段（品質檢定）</legend>
+          <div class="production-record-form-grid">
+            <label>上料時間<input type="text" id="editMainLoad" /></label>
+            <label>開始時間<input type="text" id="editMainStart" /></label>
+            <label>完成時間<input type="text" id="editMainFinish" /></label>
+            <label>產品編號<input type="text" id="editMainProductNo" /></label>
+            <label>材料厚度<input type="text" id="editMainThickness" /></label>
+            <label>闊度<input type="text" id="editMainWidth" /></label>
+            <label>高度<input type="text" id="editMainHeight" /></label>
+            <label>長度<input type="text" id="editMainLength" /></label>
+            <label>產品名稱<input type="text" id="editMainName" /></label>
+            <label>轉機員/檢查員
+              <select id="editMainOperator">
+                <option value=""></option>
+                <option value="達">達</option>
+                <option value="群">群</option>
+                <option value="嫻">嫻</option>
+              </select>
+            </label>
+            <label>速度<input type="text" id="editMainSpeed" /></label>
+            <label>其他<input type="text" id="editMainOther" /></label>
+          </div>
+        </fieldset>
+        <fieldset class="production-record-fieldset">
+          <legend>用料記録</legend>
+          <div class="production-record-form-grid">
+            <label>單號<input type="text" id="editMatOrderNo" /></label>
+            <label>材料厚度<input type="text" id="editMatThickness1" /></label>
+            <label>闊度<input type="text" id="editMatWidth1" /></label>
+            <label>卷材重量<input type="text" id="editMatWeight" /></label>
+            <label>材料厚度2<input type="text" id="editMatThickness2" /></label>
+            <label>闊度2<input type="text" id="editMatWidth2" /></label>
+            <label>高度<input type="text" id="editMatHeight" /></label>
+            <label>產品編號<input type="text" id="editMatProductNo" /></label>
+            <label>產品名稱<input type="text" id="editMatName" /></label>
+            <label>長度<input type="text" id="editMatLength" /></label>
+            <label>數量<input type="text" id="editMatQty" /></label>
+          </div>
+        </fieldset>
+        <label class="production-record-note-label">修正理由（必填）
+          <textarea id="editCorrectionNote" rows="2" placeholder="請說明修正原因"></textarea>
+        </label>
+        <div class="production-record-modal__actions">
+          <button type="button" id="productionRecordModalCancel" class="btn btn-secondary">取消</button>
+          <button type="submit" class="btn btn-primary">保存修正</button>
+        </div>
+        <p id="productionRecordEditError" class="production-record-edit-error" hidden></p>
+      </form>
+    </div>
+  </div>
+
+    <script src="app.js?v=20260314-1"></script>
   <noscript>請啟用JavaScript</noscript>
   <script>
     // 初始化時、工具列のチェック状態や列幅調整は app.js が担当

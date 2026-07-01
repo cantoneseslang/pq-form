@@ -248,8 +248,6 @@
           <option value="達">達</option>
           <option value="群">群</option>
           <option value="嫻">嫻</option>
-          <option value="燕">燕</option>
-          <option value="年">年</option>
         </select>
       </td>
       <td>${timeSplitHtml('time-finish')}</td>
@@ -1333,6 +1331,320 @@
     }
   }
 
+  const PRODUCTION_RECORDS_KEY = 'pq-form-production-records-v1';
+  let productionRecordsCache = [];
+
+  function getPageTypeFromAuto(inAutoPage) {
+    return inAutoPage ? 'auto' : 'molding';
+  }
+
+  function getFormDateString(inAutoPage) {
+    const y = document.getElementById(inAutoPage ? 'year2' : 'year')?.value || '';
+    const m = document.getElementById(inAutoPage ? 'month2' : 'month')?.value || '';
+    const d = document.getElementById(inAutoPage ? 'day2' : 'day')?.value || '';
+    if (!y && !m && !d) return '';
+    return `${y}/${m}/${d}`;
+  }
+
+  function getProductionRecordBody(inAutoPage) {
+    return document.getElementById(inAutoPage ? 'productionRecordBody2' : 'productionRecordBody');
+  }
+
+  function getProductionRecordCountEl(inAutoPage) {
+    return document.getElementById(inAutoPage ? 'productionRecordCount2' : 'productionRecordCount');
+  }
+
+  function getMaterialBodyForPage(inAutoPage) {
+    return inAutoPage ? materialTableBody2 : materialTableBody;
+  }
+
+  function buildProductionRecord(mainTr, sheetRow, inAutoPage) {
+    const topRows = [...mainTr.parentElement.children].filter(isMainDataRow);
+    const rowIndex = topRows.indexOf(mainTr);
+    const materialBody = getMaterialBodyForPage(inAutoPage);
+    const materialTr = rowIndex >= 0 ? materialBody?.querySelectorAll('tr')[rowIndex] : null;
+    return {
+      id: crypto.randomUUID(),
+      recordDate: getFormDateString(inAutoPage),
+      pageType: getPageTypeFromAuto(inAutoPage),
+      productTypes: collectChecks(inAutoPage ? '#autoPage input[name="type"]' : '.container:first-of-type input[name="type"]'),
+      machines: collectChecks(inAutoPage ? '#autoPage input[name="machine"]' : '.container:first-of-type input[name="machine"]'),
+      main: serializeMainRow(mainTr),
+      material: materialTr ? serializeMaterialRow(materialTr) : {},
+      sheetRow: sheetRow || null,
+      sheetName: 'pq-form',
+      correctionNote: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+  }
+
+  function saveProductionRecordsLocal() {
+    try {
+      localStorage.setItem(PRODUCTION_RECORDS_KEY, JSON.stringify(productionRecordsCache));
+    } catch (e) {
+      console.warn('saveProductionRecordsLocal failed', e);
+    }
+  }
+
+  function loadProductionRecordsLocal() {
+    try {
+      const raw = localStorage.getItem(PRODUCTION_RECORDS_KEY);
+      productionRecordsCache = raw ? JSON.parse(raw) : [];
+      if (!Array.isArray(productionRecordsCache)) productionRecordsCache = [];
+    } catch (e) {
+      productionRecordsCache = [];
+    }
+  }
+
+  function escapeHtml(text) {
+    return String(text ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function renderProductionRecordsForPage(inAutoPage) {
+    const tbody = getProductionRecordBody(inAutoPage);
+    const countEl = getProductionRecordCountEl(inAutoPage);
+    if (!tbody) return;
+    const pageType = getPageTypeFromAuto(inAutoPage);
+    const filterDate = getFormDateString(inAutoPage);
+    const records = productionRecordsCache
+      .filter((r) => r.pageType === pageType && (!filterDate || r.recordDate === filterDate))
+      .sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+
+    if (countEl) countEl.textContent = `${records.length} 筆`;
+
+    if (records.length === 0) {
+      tbody.innerHTML = '<tr class="production-record-empty"><td colspan="14">尚無生產紀錄</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = records.map((record) => {
+      const m = record.main || {};
+      const mat = record.material || {};
+      const corrected = !!record.correctedAt || !!record.correctionNote;
+      return `<tr data-record-id="${escapeHtml(record.id)}" class="${corrected ? 'is-corrected' : ''}">
+        <td>${escapeHtml(record.recordDate)}</td>
+        <td>${escapeHtml(m.productNo)}</td>
+        <td>${escapeHtml(m.name)}</td>
+        <td>${escapeHtml(m.thickness)}</td>
+        <td>${escapeHtml(m.width)}</td>
+        <td>${escapeHtml(m.height)}</td>
+        <td>${escapeHtml(m.length)}</td>
+        <td>${escapeHtml(m.operator)}</td>
+        <td>${escapeHtml(m.load)}</td>
+        <td>${escapeHtml(m.start)}</td>
+        <td>${escapeHtml(m.finish)}</td>
+        <td>${escapeHtml(mat.productNo)}</td>
+        <td>${escapeHtml(mat.qty)}</td>
+        <td><button type="button" class="btn btn-secondary btn-edit-production-record">修正</button></td>
+      </tr>`;
+    }).join('');
+  }
+
+  function renderAllProductionRecords() {
+    renderProductionRecordsForPage(false);
+    renderProductionRecordsForPage(true);
+  }
+
+  function upsertProductionRecord(record) {
+    const idx = productionRecordsCache.findIndex((r) => r.id === record.id);
+    if (idx >= 0) productionRecordsCache[idx] = record;
+    else productionRecordsCache.unshift(record);
+    saveProductionRecordsLocal();
+    renderAllProductionRecords();
+  }
+
+  async function fetchProductionRecordsFromServer(inAutoPage) {
+    const dateStr = getFormDateString(inAutoPage);
+    const pageType = getPageTypeFromAuto(inAutoPage);
+    const params = new URLSearchParams({ page: pageType });
+    if (dateStr) params.set('date', dateStr);
+    try {
+      const res = await fetch(`${API_BASE}/api/pq_form/production_records?${params.toString()}`, { cache: 'no-store' });
+      const data = await res.json();
+      if (!data.success) return false;
+      const others = productionRecordsCache.filter((r) =>
+        r.pageType !== pageType || (dateStr && r.recordDate !== dateStr));
+      const merged = [...(data.records || []), ...others];
+      const seen = new Set();
+      productionRecordsCache = merged.filter((r) => {
+        if (!r.id || seen.has(r.id)) return false;
+        seen.add(r.id);
+        return true;
+      });
+      saveProductionRecordsLocal();
+      renderAllProductionRecords();
+      return true;
+    } catch (e) {
+      console.warn('fetchProductionRecordsFromServer failed', e);
+      return false;
+    }
+  }
+
+  async function saveProductionRecordToServer(record) {
+    try {
+      const res = await fetch(`${API_BASE}/api/pq_form/production_records`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify(record),
+      });
+      const data = await res.json();
+      if (data.success && data.record) return data.record;
+    } catch (e) {
+      console.warn('saveProductionRecordToServer failed', e);
+    }
+    return null;
+  }
+
+  async function refreshProductionRecords() {
+    loadProductionRecordsLocal();
+    const ok1 = await fetchProductionRecordsFromServer(false);
+    const ok2 = await fetchProductionRecordsFromServer(true);
+    if (!ok1 && !ok2) renderAllProductionRecords();
+  }
+
+  const productionRecordModal = document.getElementById('productionRecordModal');
+  const productionRecordEditForm = document.getElementById('productionRecordEditForm');
+  const productionRecordEditError = document.getElementById('productionRecordEditError');
+
+  function closeProductionRecordModal() {
+    if (productionRecordModal) productionRecordModal.hidden = true;
+    if (productionRecordEditError) productionRecordEditError.hidden = true;
+  }
+
+  function openProductionRecordModal(recordId) {
+    const record = productionRecordsCache.find((r) => r.id === recordId);
+    if (!record || !productionRecordModal) return;
+    const m = record.main || {};
+    const mat = record.material || {};
+    document.getElementById('editRecordId').value = record.id;
+    document.getElementById('editMainLoad').value = m.load || '';
+    document.getElementById('editMainStart').value = m.start || '';
+    document.getElementById('editMainFinish').value = m.finish || '';
+    document.getElementById('editMainProductNo').value = m.productNo || '';
+    document.getElementById('editMainThickness').value = m.thickness || '';
+    document.getElementById('editMainWidth').value = m.width || '';
+    document.getElementById('editMainHeight').value = m.height || '';
+    document.getElementById('editMainLength').value = m.length || '';
+    document.getElementById('editMainName').value = m.name || '';
+    document.getElementById('editMainOperator').value = m.operator || '';
+    document.getElementById('editMainSpeed').value = m.speed || '';
+    document.getElementById('editMainOther').value = m.other || '';
+    document.getElementById('editMatOrderNo').value = mat.orderNo || '';
+    document.getElementById('editMatThickness1').value = mat.thickness1 || '';
+    document.getElementById('editMatWidth1').value = mat.width1 || '';
+    document.getElementById('editMatWeight').value = mat.weight || '';
+    document.getElementById('editMatThickness2').value = mat.thickness2 || '';
+    document.getElementById('editMatWidth2').value = mat.width2 || '';
+    document.getElementById('editMatHeight').value = mat.height || '';
+    document.getElementById('editMatProductNo').value = mat.productNo || '';
+    document.getElementById('editMatName').value = mat.name || '';
+    document.getElementById('editMatLength').value = mat.length || '';
+    document.getElementById('editMatQty').value = mat.qty || '';
+    document.getElementById('editCorrectionNote').value = record.correctionNote || '';
+    productionRecordEditError.hidden = true;
+    productionRecordModal.hidden = false;
+  }
+
+  async function handleProductionRecordEditSubmit(e) {
+    e.preventDefault();
+    const id = document.getElementById('editRecordId').value;
+    const record = productionRecordsCache.find((r) => r.id === id);
+    if (!record) return;
+
+    const correctionNote = document.getElementById('editCorrectionNote').value.trim();
+    if (!correctionNote) {
+      productionRecordEditError.textContent = '請填寫修正理由';
+      productionRecordEditError.hidden = false;
+      return;
+    }
+
+    const main = {
+      ...record.main,
+      load: document.getElementById('editMainLoad').value,
+      start: document.getElementById('editMainStart').value,
+      finish: document.getElementById('editMainFinish').value,
+      productNo: document.getElementById('editMainProductNo').value,
+      thickness: document.getElementById('editMainThickness').value,
+      width: document.getElementById('editMainWidth').value,
+      height: document.getElementById('editMainHeight').value,
+      length: document.getElementById('editMainLength').value,
+      name: document.getElementById('editMainName').value,
+      operator: document.getElementById('editMainOperator').value,
+      speed: document.getElementById('editMainSpeed').value,
+      other: document.getElementById('editMainOther').value,
+    };
+    const material = {
+      ...record.material,
+      orderNo: document.getElementById('editMatOrderNo').value,
+      thickness1: document.getElementById('editMatThickness1').value,
+      width1: document.getElementById('editMatWidth1').value,
+      weight: document.getElementById('editMatWeight').value,
+      thickness2: document.getElementById('editMatThickness2').value,
+      width2: document.getElementById('editMatWidth2').value,
+      height: document.getElementById('editMatHeight').value,
+      productNo: document.getElementById('editMatProductNo').value,
+      name: document.getElementById('editMatName').value,
+      length: document.getElementById('editMatLength').value,
+      qty: document.getElementById('editMatQty').value,
+    };
+
+    try {
+      const res = await fetch(`${API_BASE}/api/pq_form/production_records/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ main, material, correction_note: correctionNote }),
+      });
+      const data = await res.json();
+      if (res.status === 503) {
+        upsertProductionRecord({
+          ...record,
+          main,
+          material,
+          correctionNote,
+          correctedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        closeProductionRecordModal();
+        return;
+      }
+      if (!data.success) {
+        productionRecordEditError.textContent = data.error || '保存失敗';
+        productionRecordEditError.hidden = false;
+        return;
+      }
+      upsertProductionRecord(data.record);
+      closeProductionRecordModal();
+    } catch (err) {
+      productionRecordEditError.textContent = '保存失敗';
+      productionRecordEditError.hidden = false;
+    }
+  }
+
+  function bindProductionRecordEvents() {
+    document.getElementById('refreshProductionRecordsBtn')?.addEventListener('click', refreshProductionRecords);
+    document.getElementById('refreshProductionRecordsBtn2')?.addEventListener('click', refreshProductionRecords);
+    document.getElementById('productionRecordModalClose')?.addEventListener('click', closeProductionRecordModal);
+    document.getElementById('productionRecordModalCancel')?.addEventListener('click', closeProductionRecordModal);
+    productionRecordEditForm?.addEventListener('submit', handleProductionRecordEditSubmit);
+    document.addEventListener('click', (e) => {
+      if (e.target.classList.contains('btn-edit-production-record')) {
+        const id = e.target.closest('tr')?.dataset.recordId;
+        if (id) openProductionRecordModal(id);
+      }
+    });
+    ['year', 'month', 'day', 'year2', 'month2', 'day2'].forEach((id) => {
+      document.getElementById(id)?.addEventListener('change', renderAllProductionRecords);
+      document.getElementById(id)?.addEventListener('input', renderAllProductionRecords);
+    });
+  }
+
   function persistLocal(){
     try{
       const data = {
@@ -1533,10 +1845,15 @@
         headers: { 'Content-Type': 'application/json' },
         cache:'no-store',
         body: JSON.stringify(payload)
-      }).then(r=>r.json()).then(res=>{
+      }).then(r=>r.json()).then(async (res)=>{
         console.log('submit result', res);
         if (res.success) {
           showOutsideMessage(tr, '已送出（伺服器寫入）', 'success');
+          if (!isMaterialTable) {
+            const record = buildProductionRecord(tr, res.row, inAutoPage);
+            const saved = await saveProductionRecordToServer(record);
+            upsertProductionRecord(saved || record);
+          }
         } else {
           showOutsideMessage(tr, '送出失敗: ' + (res.error || ''), 'error');
         }
@@ -1593,6 +1910,10 @@
     restoreLocal();
     syncAllTopToMaterial(document.querySelector('.container:first-of-type'));
     syncAllTopToMaterial(document.getElementById('autoPage'));
+    loadProductionRecordsLocal();
+    renderAllProductionRecords();
+    bindProductionRecordEvents();
+    refreshProductionRecords();
   }
   initApp();
 
