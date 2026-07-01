@@ -1,4 +1,16 @@
-import { getSheetsClient, readRange, writeRowA1, findFirstEmptyRowInBlock } from '../../lib/sheets.js';
+import {
+  getSheetsClient,
+  readRange,
+  writeRowA1,
+  findFirstEmptyRowInBlock,
+  dataBlockRange,
+  copyRowTemplate,
+  applyDataRowLayout,
+  normalizeRowValues,
+  DATA_START_ROW,
+  DATA_END_ROW,
+  STYLED_TEMPLATE_END_ROW,
+} from '../../lib/sheets.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -22,15 +34,20 @@ export default async function handler(req, res) {
     }
 
     const { sheetName } = getSheetsClient();
-    const blockRange = `${sheetName}!A8:T16`;
+    const blockRange = dataBlockRange(sheetName);
     const block = await readRange(blockRange);
     const targetRow = findFirstEmptyRowInBlock(block);
     if (!targetRow) {
       res.setHeader('Cache-Control', 'no-store');
-      return res.status(409).json({ success: false, error: '表の範囲(8-16)が満杯です' });
+      return res.status(409).json({ success: false, error: `表の範囲(${DATA_START_ROW}-${DATA_END_ROW})が満杯です` });
     }
 
-    const values = rows[0];
+    if (targetRow > STYLED_TEMPLATE_END_ROW) {
+      await copyRowTemplate(sheetName, targetRow, DATA_START_ROW);
+    }
+    await applyDataRowLayout(sheetName, targetRow);
+
+    const values = normalizeRowValues(rows[0]);
     const writeRange = `${sheetName}!A${targetRow}:T${targetRow}`;
     await writeRowA1(writeRange, values);
 

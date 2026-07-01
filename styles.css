@@ -12,8 +12,12 @@ html,body{margin:0;padding:0;font-family:'Noto Sans JP',system-ui,-apple-system,
 header{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:16px 20px;margin-bottom:16px}
 header h1{font-size:20px;margin:0;font-weight:700}
 header small{display:block;color:var(--muted);font-weight:400}
-.header-flex{display:flex;align-items:center;gap:12px}
+.header-flex{display:flex;align-items:center;gap:12px;justify-content:space-between}
 .logo-left{height:28px;width:auto}
+.page-switcher{display:flex;gap:8px}
+.page-btn{background:#f8f9fa;color:var(--text);border:1px solid var(--border);border-radius:6px;padding:8px 16px;font-weight:600;cursor:pointer;transition:all 0.2s}
+.page-btn:hover{background:#e9ecef;border-color:#adb5bd}
+.page-btn.active{background:var(--primary);color:#fff;border-color:var(--primary)}
 
 .toolbar{background:var(--panel);border:1px solid var(--border);border-radius:8px;padding:12px 16px;margin-bottom:16px}
 .toolbar-row{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:8px 0}
@@ -43,6 +47,73 @@ header small{display:block;color:var(--muted);font-weight:400}
 .btn-secondary{background:#6c757d}
 .btn-primary{background:var(--primary)}
 
+/* チェックボックスの色クラス - より強力な設定 */
+.checkbox-red {
+  accent-color: #ff0000 !important;
+}
+
+/* コード番号入力フィールド - 大文字表示 */
+input[style*="text-transform: uppercase"] {
+  text-transform: uppercase !important;
+  font-family: 'Courier New', monospace;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+}
+
+/* 速度選択用selectボックス */
+select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 2px rgba(30, 136, 229, 0.2);
+}
+
+/* 速度表示用スタイル */
+select[data-display] {
+  background: #f8f9fa;
+  font-weight: 600;
+  color: var(--primary);
+}
+
+select[data-display]:after {
+  content: attr(data-display);
+}
+
+.checkbox-blue {
+  accent-color: #0000ff !important;
+}
+
+/* テーブル内のチェックボックス用の特別なスタイル */
+table input[type="checkbox"].checkbox-red:checked {
+  background-color: #ff0000 !important;
+  border-color: #ff0000 !important;
+  color: white !important;
+}
+
+table input[type="checkbox"].checkbox-blue:checked {
+  background-color: #0000ff !important;
+  border-color: #0000ff !important;
+  color: white !important;
+}
+
+/* チェックマークの色も変更 */
+table input[type="checkbox"].checkbox-red:checked::after {
+  color: white !important;
+}
+
+table input[type="checkbox"].checkbox-blue:checked::after {
+  color: white !important;
+}
+
 .table-wrap{background:var(--panel);border:1px solid var(--border);border-radius:8px;overflow:auto}
 table{width:100%;border-collapse:collapse;min-width:1600px;table-layout:fixed}
 thead th{position:sticky;top:0;background:#fafbfc;border-bottom:2px solid var(--border);padding:6px 0;text-align:center;font-size:12px}
@@ -58,7 +129,54 @@ thead th{position:sticky;top:0;background:#fafbfc;border-bottom:2px solid var(--
 /* 改行スタック表示（縦に1文字ずつ） */
 .th-stacked{ line-height:1.05; white-space:nowrap }
 tbody td{border-top:1px solid var(--border);padding:4px}
-tbody input[type="text"],tbody input[type="time"],tbody input[type="number"],tbody select{width:100%;padding:6px 8px;border:1px solid var(--border);border-radius:6px}
+tbody input[type="text"],tbody input[type="time"],tbody input[type="number"],tbody select{
+  width:100%;
+  box-sizing:border-box;
+  min-height:34px;
+  padding:6px 8px;
+  border:1px solid var(--border);
+  border-radius:6px;
+  font-size:14px;
+  line-height:1.2;
+}
+select.thickness-select{
+  width:100%;
+  max-width:56px;
+  padding:6px 4px;
+  font-size:14px;
+  min-height:34px;
+  border:1px solid var(--border);
+  border-radius:6px;
+  background:#fff;
+}
+.time-split{
+  display:flex;
+  align-items:stretch;
+  justify-content:center;
+  gap:2px;
+  width:100%;
+  min-height:34px;
+}
+.time-split .time-hour,.time-split .time-minute{
+  flex:0 0 28px;
+  width:28px;
+  min-width:28px;
+  box-sizing:border-box;
+  min-height:34px;
+  padding:6px 4px;
+  text-align:center;
+  font-size:14px;
+  line-height:1.2;
+  border:1px solid var(--border);
+  border-radius:6px;
+}
+.time-split .time-sep{
+  display:flex;
+  align-items:center;
+  font-size:14px;
+  line-height:1;
+  color:var(--text);
+}
 /* 幅は index.html の <colgroup> で一元管理するため、列ごとの固定は行わない */
 tbody .chk{text-align:center;padding:0}
 tbody .chk input[type="checkbox"]{
@@ -90,10 +208,12 @@ tbody .chk input[type="checkbox"]:checked::after{
 }
 
 .w-60{width:60px}
+.w-58{width:58px}
 .w-56{width:56px}
 .w-44{width:44px}
 .w-50{width:50px}
 .w-48{width:48px}
+.w-81{width:81px}
 .w-80{width:80px}
 .w-70{width:70px}
 .w-180{width:180px}
@@ -112,6 +232,14 @@ tbody .chk input[type="checkbox"]:checked::after{
 .w-220{width:220px}
 .w-160{width:160px}
 .w-160.btns{width:160px;text-align:center}
+
+.product-match-picker{margin-top:4px}
+.product-match-select{width:100%;max-width:189px;font-size:12px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;background:#fff}
+.product-resolve-hint{font-size:11px;color:#c0392b;line-height:1.4}
+.product-hint-outside{margin:8px 0 0;padding:0 12px 4px;font-size:11px;line-height:1.5}
+.product-hint-outside--error{color:#c0392b}
+.product-hint-outside--success{color:#1e7e34;font-weight:700;font-size:12px}
+input.product-not-found{color:#c0392b;font-style:italic;background:#fff5f5}
 .w-380{width:380px}
 .w-760{width:760px}
 
@@ -123,10 +251,117 @@ footer{color:var(--muted);margin:14px 4px}
 footer{text-align:center;color:#6c757d;margin:18px 0;padding:12px 0;margin-top:auto}
 
 
-/* 時刻入力の各ブラウザ用ピッカー/スピン/クリアを非表示 */
-input[type="time"]::-webkit-calendar-picker-indicator{ opacity:0; display:none; -webkit-appearance:none }
-input[type="time"]::-webkit-clear-button{ display:none }
-input[type="time"]::-webkit-inner-spin-button{ display:none }
-input[type="time"]::-ms-clear{ display:none }
-input[type="time"]{ background:transparent }
+/* 時刻入力の各ブラウザ用ピッカー/スピン/クリアを非表示（デスクトップのみ） */
+@media (min-width: 768px) {
+  input[type="time"]::-webkit-calendar-picker-indicator{ opacity:0; display:none; -webkit-appearance:none }
+  input[type="time"]::-webkit-clear-button{ display:none }
+  input[type="time"]::-webkit-inner-spin-button{ display:none }
+  input[type="time"]::-ms-clear{ display:none }
+  input[type="time"]{ background:transparent }
+}
+
+/* モバイル・タブレットでは時間選択UIを表示 */
+@media (max-width: 767px) {
+  input[type="time"]::-webkit-calendar-picker-indicator{ 
+    opacity: 1; 
+    display: block; 
+    -webkit-appearance: menulist-button;
+    background: transparent;
+    cursor: pointer;
+  }
+  input[type="time"]::-webkit-clear-button{ 
+    display: block; 
+    opacity: 0.7;
+  }
+  input[type="time"]::-webkit-inner-spin-button{ 
+    display: block; 
+    opacity: 0.7;
+  }
+  input[type="time"]{ 
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+  }
+}
+
+/* Androidタブレット用の追加スタイル */
+@media (max-width: 1024px) and (min-width: 768px) {
+  input[type="time"]::-webkit-calendar-picker-indicator{ 
+    opacity: 1; 
+    display: block; 
+    -webkit-appearance: menulist-button;
+    background: transparent;
+    cursor: pointer;
+    width: 20px;
+    height: 20px;
+  }
+  input[type="time"]::-webkit-clear-button{ 
+    display: block; 
+    opacity: 0.7;
+  }
+  input[type="time"]::-webkit-inner-spin-button{ 
+    display: block; 
+    opacity: 0.7;
+  }
+  input[type="time"]{ 
+    background: #fff;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px;
+  }
+}
+
+/* 3段階チェックボックスのスタイル */
+.three-state-checkbox {
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  justify-content: center;
+}
+
+.checkbox-box {
+  width: 24px;
+  height: 24px;
+  border: 2px solid var(--border);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+  transition: all 0.2s ease;
+  box-shadow: 0 1px 0 rgba(0,0,0,.03);
+}
+
+.three-state-checkbox:hover .checkbox-box {
+  border-color: #9aa0a6;
+}
+
+.checkbox-text {
+  font-weight: bold;
+  font-size: 16px;
+  transition: all 0.2s ease;
+}
+
+.checkbox-text.empty {
+  color: transparent;
+}
+
+.checkbox-text.checked {
+  color: #4CAF50; /* 緑色 */
+}
+
+.checkbox-text.failed {
+  color: #F44336; /* 赤色 */
+}
+
+/* 3段階チェックボックスがアクティブな時のスタイル */
+.three-state-checkbox:active .checkbox-box {
+  transform: scale(0.95);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
 
