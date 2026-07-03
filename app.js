@@ -646,12 +646,10 @@
     if (transferRowModal) transferRowModal.hidden = true;
   }
 
-  function showTransferRowConfirmModal(kind = '轉機') {
+  function showTransferRowConfirmModal(speedLabel) {
     const msgEl = document.getElementById('transferRowModalMessage');
     if (msgEl) {
-      msgEl.textContent = kind === '其他'
-        ? '你填咗「其他」欄。係咪要自動加一行，並複製呢行嘅產品編號、材料厚度、闊度、高度、產品名稱同長度？'
-        : '你揀咗「轉機」。係咪要自動加一行，並複製呢行嘅產品編號、材料厚度、闊度、高度、產品名稱同長度？';
+      msgEl.textContent = `你揀咗「${speedLabel}」。係咪要自動加一行，並複製呢行嘅產品編號、材料厚度、闊度、高度、產品名稱同長度？`;
     }
     if (transferRowModal) transferRowModal.hidden = false;
     return new Promise((resolve) => {
@@ -672,37 +670,24 @@
     document.getElementById('transferRowCancelBtn')?.addEventListener('click', () => resolveTransferRowConfirm(false));
   }
 
-  async function handleCopyRowConfirm(sourceElement, row, kind) {
-    const confirmed = await showTransferRowConfirmModal(kind);
-    if (kind === '其他') {
-      sourceElement.dataset.otherRowAdded = '1';
-    } else {
-      sourceElement.dataset.transferRowAdded = '1';
-    }
+  async function handleTransferSpeedSelection(selectElement, row) {
+    const confirmed = await showTransferRowConfirmModal('轉機');
+    selectElement.dataset.transferRowAdded = '1';
     if (confirmed) {
       appendCopiedMainRow(row);
     }
     persistLocal();
   }
 
-  async function handleTransferSpeedSelection(selectElement, row) {
-    await handleCopyRowConfirm(selectElement, row, '轉機');
-  }
-
-  async function handleOtherFieldSelection(inputElement, row) {
-    await handleCopyRowConfirm(inputElement, row, '其他');
-  }
-
-  function bindOtherFieldCopyConfirm(root = document) {
-    root.addEventListener('focusout', (e) => {
-      const input = e.target;
-      if (!input.matches('#tableBody td:nth-child(17) input[type="text"], #tableBody2 td:nth-child(17) input[type="text"]')) return;
-      const row = input.closest('tr');
-      if (!row || !isMainDataRow(row)) return;
-      if (input.dataset.otherRowAdded === '1') return;
-      if (!String(input.value || '').trim()) return;
-      handleOtherFieldSelection(input, row);
-    });
+  async function handleNumericSpeedSelection(selectElement, row, value) {
+    const confirmed = await showTransferRowConfirmModal(`速${value}`);
+    selectElement.dataset.speedRowAdded = '1';
+    if (confirmed) {
+      appendMaterialRowFromMainRow(row);
+      const body = selectElement.closest('#tableBody, #tableBody2');
+      if (body) addRow(1, body);
+    }
+    persistLocal();
   }
 
   // 速度表示フォーマット関数
@@ -733,11 +718,10 @@
         if (value === '轉機' && !selectElement.dataset.transferRowAdded) {
           await handleTransferSpeedSelection(selectElement, row);
           return;
-        } else if (value !== '轉機' && !selectElement.dataset.speedRowAdded) {
-          selectElement.dataset.speedRowAdded = '1';
-          appendMaterialRowFromMainRow(row);
-          const body = selectElement.closest('#tableBody, #tableBody2');
-          if (body) addRow(1, body);
+        }
+        if (value !== '轉機' && !selectElement.dataset.speedRowAdded) {
+          await handleNumericSpeedSelection(selectElement, row, value);
+          return;
         }
 
         persistLocal();
@@ -1855,10 +1839,7 @@
     }
 
     const otherInput = tr.querySelector('td:nth-child(17) input');
-    if (otherInput) {
-      otherInput.value = data.other || '';
-      if (data.other) otherInput.dataset.otherRowAdded = '1';
-    }
+    if (otherInput) otherInput.value = data.other || '';
 
     ['length_tolerance', 'section_size', 'left_right_bend', 'up_down_bend', 'twist'].forEach((field) => {
       const checkbox = tr.querySelector(`.three-state-checkbox[data-field="${field}"]`);
@@ -2991,7 +2972,6 @@
   bindPlistResolveInputs(document);
   bindTimeSplitInputs(document);
   bindMaterialOrderNoInputs(document);
-  bindOtherFieldCopyConfirm(document);
 
   // Init
   async function initApp() {
