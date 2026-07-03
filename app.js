@@ -26,7 +26,7 @@
 
   function toTF(v){ return v ? 'TRUE' : 'FALSE'; }
 
-  const FALLBACK_THICKNESS_OPTIONS = ['0.3', '0.4', '0.5', '0.6', '0.8', '0.8A', '1.0', '1.2', '1.5', '3.0'];
+  const FALLBACK_THICKNESS_OPTIONS = ['0.3', '0.4', '0.4D', '0.5', '0.6', '0.8', '0.8A', '1.0', '1.2', '1.5', '3.0'];
   let thicknessOptions = [...FALLBACK_THICKNESS_OPTIONS];
 
   function formatThicknessValue(value) {
@@ -37,11 +37,13 @@
     return Number.isFinite(num) ? num.toFixed(1) : text;
   }
 
-  /** plist 照合のみ 0.8A→0.8。材料厚度・產品名稱表示は 0.8A のまま */
+  /** plist 照合のみ 0.8A→0.8、0.4D→0.4。材料厚度・產品名稱表示はそのまま */
   function thicknessForProductLookup(value) {
     const formatted = formatThicknessValue(value);
     if (!formatted) return '';
-    if (formatted.toUpperCase() === '0.8A') return '0.8';
+    const upper = formatted.toUpperCase();
+    if (upper === '0.8A') return '0.8';
+    if (upper === '0.4D') return '0.4';
     return formatted;
   }
 
