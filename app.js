@@ -26,12 +26,13 @@
 
   function toTF(v){ return v ? 'TRUE' : 'FALSE'; }
 
-  const FALLBACK_THICKNESS_OPTIONS = ['0.3', '0.4', '0.5', '0.6', '0.8', '1.0', '1.2', '1.5', '3.0'];
+  const FALLBACK_THICKNESS_OPTIONS = ['0.3', '0.4', '0.5', '0.6', '0.8', '0.8A', '1.0', '1.2', '1.5', '3.0'];
   let thicknessOptions = [...FALLBACK_THICKNESS_OPTIONS];
 
   function formatThicknessValue(value) {
     const text = String(value ?? '').trim();
     if (!text) return '';
+    if (/[A-Za-z]/.test(text)) return text;
     const num = parseFloat(text);
     return Number.isFinite(num) ? num.toFixed(1) : text;
   }
@@ -39,10 +40,14 @@
   function thicknessMatches(a, b) {
     if (!a && !b) return true;
     if (!a || !b) return false;
-    const na = parseFloat(a);
-    const nb = parseFloat(b);
+    const sa = String(a).trim();
+    const sb = String(b).trim();
+    if (sa === sb) return true;
+    if (/[A-Za-z]/.test(sa) || /[A-Za-z]/.test(sb)) return false;
+    const na = parseFloat(sa);
+    const nb = parseFloat(sb);
     if (Number.isFinite(na) && Number.isFinite(nb)) return na === nb;
-    return String(a).trim() === String(b).trim();
+    return false;
   }
 
   function normalizeThicknessOptions(list) {
@@ -51,12 +56,17 @@
     for (const item of list) {
       const formatted = formatThicknessValue(item);
       if (!formatted) continue;
-      const key = parseFloat(formatted);
+      const key = /[A-Za-z]/.test(formatted) ? formatted : parseFloat(formatted);
       if (seen.has(key)) continue;
       seen.add(key);
       out.push(formatted);
     }
-    return out.sort((a, b) => parseFloat(a) - parseFloat(b));
+    return out.sort((a, b) => {
+      const na = parseFloat(a);
+      const nb = parseFloat(b);
+      if (na !== nb) return na - nb;
+      return String(a).localeCompare(String(b));
+    });
   }
 
   function buildThicknessSelectOptions(selected = '') {
@@ -113,7 +123,7 @@
       const res = await fetch(`${API_BASE}/api/pq_form/plist/thicknesses`, { cache: 'no-store' });
       const data = await res.json();
       if (data.success && Array.isArray(data.thicknesses) && data.thicknesses.length) {
-        thicknessOptions = normalizeThicknessOptions(data.thicknesses);
+        thicknessOptions = normalizeThicknessOptions([...data.thicknesses, ...FALLBACK_THICKNESS_OPTIONS]);
         refreshThicknessSelects();
       }
     } catch (error) {
