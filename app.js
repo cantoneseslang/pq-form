@@ -670,24 +670,21 @@
     document.getElementById('transferRowCancelBtn')?.addEventListener('click', () => resolveTransferRowConfirm(false));
   }
 
-  async function handleTransferSpeedSelection(selectElement, row) {
-    const confirmed = await showTransferRowConfirmModal('轉機');
-    selectElement.dataset.transferRowAdded = '1';
+  async function handleSpeedCopyRowConfirm(selectElement, row, speedLabel, datasetKey) {
+    const confirmed = await showTransferRowConfirmModal(speedLabel);
+    selectElement.dataset[datasetKey] = '1';
     if (confirmed) {
       appendCopiedMainRow(row);
     }
     persistLocal();
   }
 
+  async function handleTransferSpeedSelection(selectElement, row) {
+    await handleSpeedCopyRowConfirm(selectElement, row, '轉機', 'transferRowAdded');
+  }
+
   async function handleNumericSpeedSelection(selectElement, row, value) {
-    const confirmed = await showTransferRowConfirmModal(`速${value}`);
-    selectElement.dataset.speedRowAdded = '1';
-    if (confirmed) {
-      appendMaterialRowFromMainRow(row);
-      const body = selectElement.closest('#tableBody, #tableBody2');
-      if (body) addRow(1, body);
-    }
-    persistLocal();
+    await handleSpeedCopyRowConfirm(selectElement, row, `速${value}`, 'speedRowAdded');
   }
 
   // 速度表示フォーマット関数
