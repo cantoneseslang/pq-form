@@ -2115,22 +2115,156 @@
     return { ...base, qty };
   }
 
-  function buildProductionRecord(mainTr, sheetRow, inAutoPage, materialData = null) {
-    const rowIndex = getMainRowIndex(mainTr);
-    const materialTr = findMaterialRowForMain(mainTr, inAutoPage);
-    const material = materialData
-      || (materialTr
-        ? buildAggregatedMaterialForOrderNo(inAutoPage, getMaterialOrderNoValue(materialTr), materialTr)
-        : {});
+  function collectMainLinesFromForm(inAutoPage) {
+    const tbody = inAutoPage ? document.getElementById('tableBody2') : tableBody;
+    if (!tbody) return [];
+    return [...tbody.querySelectorAll('tr')].filter(isMainDataRow).map((tr) => serializeMainRow(tr));
+  }
+
+  function collectMaterialLinesForOrder(inAutoPage, orderNo) {
+    return getMaterialRowsByOrderNo(inAutoPage, orderNo).map((tr) => serializeMaterialRow(tr));
+  }
+
+  function buildProductionLinesSnapshot(mainTr, inAutoPage, materialTr, sheetRow, existingRecord = null) {
+    const mainRowIndex = getMainRowIndex(mainTr);
+    const orderNo = materialTr ? getMaterialOrderNoValue(materialTr) : '';
+    let mainLines = collectMainLinesFromForm(inAutoPage);
+    let materialLines = orderNo ? collectMaterialLinesForOrder(inAutoPage, orderNo) : [];
+
+    if (!mainLines.length) mainLines = [serializeMainRow(mainTr)];
+    if (!materialLines.length && materialTr) materialLines = [serializeMaterialRow(materialTr)];
+
+    let sheetRows = existingRecord?.sheetRows ? [...existingRecord.sheetRows] : [];
+    if (!sheetRows.length && existingRecord?.sheetRow) sheetRows = [existingRecord.sheetRow];
+    while (sheetRows.length < mainLines.length) sheetRows.push(null);
+    if (mainRowIndex >= 0 && sheetRow) sheetRows[mainRowIndex] = sheetRow;
+    else if (sheetRow && !sheetRows.filter(Boolean).length) sheetRows[0] = sheetRow;
+
+    const material = materialLines.length
+      ? {
+        ...materialLines[0],
+        qty: sumMaterialQtyValues(materialLines.map((line) => line.qty)),
+      }
+      : {};
+    const main = mainLines[mainRowIndex >= 0 ? mainRowIndex : 0] || mainLines[0] || serializeMainRow(mainTr);
+
+    return { main, material, mainLines, materialLines, sheetRows };
+  }
+
+  function normalizeProductionRecordLines(record) {
+    const mainLines = Array.isArray(record?.mainLines) && record.mainLines.length
+      ? record.mainLines.map((line) => ({ ...line }))
+      : (record?.main?.productNo || record?.main?.load ? [{ ...record.main }] : []);
+    const materialLines = Array.isArray(record?.materialLines) && record.materialLines.length
+      ? record.materialLines.map((line) => ({ ...line }))
+      : (record?.material?.orderNo || record?.material?.qty ? [{ ...record.material }] : []);
+    let sheetRows = Array.isArray(record?.sheetRows) ? [...record.sheetRows] : [];
+    if (!sheetRows.length && record?.sheetRow) sheetRows = [record.sheetRow];
+    while (sheetRows.length < mainLines.length) sheetRows.push(null);
+    return { mainLines, materialLines, sheetRows };
+  }
+
+  function buildEditOperatorSelectHtml(value) {
+    const options = ['', '達', '群', '嫻'];
+    return `<select data-field="operator">${options.map((opt) =>
+      `<option value="${opt}"${opt === value ? ' selected' : ''}>${opt || '—'}</option>`).join('')}</select>`;
+  }
+
+  function buildEditMainCardHtml(index, line, sheetRow) {
+    const rowNo = index + 1;
+    const sheetHint = sheetRow ? `Google表 ${sheetRow} 行` : '（未連結表行）';
+    return `<fieldset class="production-record-fieldset production-edit-card" data-line-type="main" data-line-index="${index}">
+      <legend>上段（品質檢定）第 ${rowNo} 行</legend>
+      <p class="production-edit-card__meta">${escapeHtml(sheetHint)}</p>
+      <div class="production-record-form-grid production-record-form-grid--main-row1">
+        <label class="production-record-field-time">上料時間<input type="text" data-field="load" value="${escapeHtml(line.load || '')}" /></label>
+        <label class="production-record-field-time">開始時間<input type="text" data-field="start" value="${escapeHtml(line.start || '')}" /></label>
+        <label class="production-record-field-time">完成時間<input type="text" data-field="finish" value="${escapeHtml(line.finish || '')}" /></label>
+        <label class="production-record-field-product-no">產品編號<input type="text" data-field="productNo" value="${escapeHtml(line.productNo || '')}" /></label>
+      </div>
+      <div class="production-record-form-grid production-record-form-grid--main-spec">
+        <label>材料厚度<input type="text" data-field="thickness" value="${escapeHtml(line.thickness || '')}" /></label>
+        <label>闊度<input type="text" data-field="width" value="${escapeHtml(line.width || '')}" /></label>
+        <label>高度<input type="text" data-field="height" value="${escapeHtml(line.height || '')}" /></label>
+        <label>長度<input type="text" data-field="length" value="${escapeHtml(line.length || '')}" /></label>
+      </div>
+      <div class="production-record-form-grid production-record-form-grid--main-bottom">
+        <label class="production-record-field-wide">產品名稱<input type="text" data-field="name" value="${escapeHtml(line.name || '')}" /></label>
+        <label class="production-record-field-narrow">轉機員/檢查員${buildEditOperatorSelectHtml(line.operator || '')}</label>
+        <label class="production-record-field-narrow">速度<input type="text" data-field="speed" value="${escapeHtml(line.speed || '')}" /></label>
+        <label class="production-record-field-narrow">其他<input type="text" data-field="other" value="${escapeHtml(line.other || '')}" /></label>
+      </div>
+    </fieldset>`;
+  }
+
+  function buildEditMaterialCardHtml(index, line) {
+    const rowNo = index + 1;
+    return `<fieldset class="production-record-fieldset production-edit-card" data-line-type="material" data-line-index="${index}">
+      <legend>用料記録 第 ${rowNo} 行</legend>
+      <div class="production-record-form-grid production-record-form-grid--mat-top">
+        <label>單號<input type="text" data-field="orderNo" value="${escapeHtml(line.orderNo || '')}" /></label>
+        <label>材料厚度<input type="text" data-field="thickness1" value="${escapeHtml(line.thickness1 || '')}" /></label>
+        <label>闊度<input type="text" data-field="width1" value="${escapeHtml(line.width1 || '')}" /></label>
+        <label>卷材重量<input type="text" data-field="weight" value="${escapeHtml(line.weight || '')}" /></label>
+        <label>材料厚度2<input type="text" data-field="thickness2" value="${escapeHtml(line.thickness2 || '')}" /></label>
+        <label>闊度2<input type="text" data-field="width2" value="${escapeHtml(line.width2 || '')}" /></label>
+        <label>高度<input type="text" data-field="height" value="${escapeHtml(line.height || '')}" /></label>
+        <label>產品編號<input type="text" data-field="productNo" value="${escapeHtml(line.productNo || '')}" /></label>
+      </div>
+      <div class="production-record-form-grid production-record-form-grid--mat-bottom">
+        <label class="production-record-field-wide">產品名稱<input type="text" data-field="name" value="${escapeHtml(line.name || '')}" /></label>
+        <label>長度<input type="text" data-field="length" value="${escapeHtml(line.length || '')}" /></label>
+        <label>數量<input type="text" data-field="qty" value="${escapeHtml(line.qty || '')}" /></label>
+      </div>
+    </fieldset>`;
+  }
+
+  function renderProductionRecordEditCards(record) {
+    const container = document.getElementById('productionRecordEditCards');
+    if (!container) return;
+    const { mainLines, materialLines, sheetRows } = normalizeProductionRecordLines(record);
+    const parts = [];
+    mainLines.forEach((line, index) => {
+      parts.push(buildEditMainCardHtml(index, line, sheetRows[index]));
+    });
+    materialLines.forEach((line, index) => {
+      parts.push(buildEditMaterialCardHtml(index, line));
+    });
+    container.innerHTML = parts.join('');
+  }
+
+  function readEditCardLine(card, fields) {
+    const line = {};
+    fields.forEach((field) => {
+      const el = card.querySelector(`[data-field="${field}"]`);
+      line[field] = el?.value ?? '';
+    });
+    return line;
+  }
+
+  function collectEditFormLines() {
+    const mainFields = ['load', 'start', 'finish', 'productNo', 'thickness', 'width', 'height', 'length', 'name', 'operator', 'speed', 'other'];
+    const materialFields = ['orderNo', 'thickness1', 'width1', 'weight', 'thickness2', 'width2', 'height', 'productNo', 'name', 'length', 'qty'];
+    const mainLines = [...document.querySelectorAll('.production-edit-card[data-line-type="main"]')]
+      .sort((a, b) => Number(a.dataset.lineIndex) - Number(b.dataset.lineIndex))
+      .map((card) => readEditCardLine(card, mainFields));
+    const materialLines = [...document.querySelectorAll('.production-edit-card[data-line-type="material"]')]
+      .sort((a, b) => Number(a.dataset.lineIndex) - Number(b.dataset.lineIndex))
+      .map((card) => readEditCardLine(card, materialFields));
+    return { mainLines, materialLines };
+  }
+
+  function buildProductionRecord(mainTr, sheetRow, inAutoPage, materialTr = null) {
+    const resolvedMaterialTr = materialTr || findMaterialRowForMain(mainTr, inAutoPage);
+    const snapshot = buildProductionLinesSnapshot(mainTr, inAutoPage, resolvedMaterialTr, sheetRow);
     return {
       id: crypto.randomUUID(),
       recordDate: getFormDateString(inAutoPage),
       pageType: getProductionPageType(inAutoPage),
       productTypes: collectChecks(inAutoPage ? '#autoPage input[name="type"]' : '#moldingPage input[name="type"]'),
       machines: collectChecks(inAutoPage ? '#autoPage input[name="machine"]' : '#moldingPage input[name="machine"]'),
-      main: serializeMainRow(mainTr),
-      material,
-      sheetRow: sheetRow || null,
+      ...snapshot,
+      sheetRow: snapshot.sheetRows.find(Boolean) || sheetRow || null,
       sheetName: 'pq-form',
       correctionNote: '',
       createdAt: new Date().toISOString(),
@@ -2517,34 +2651,10 @@
   function openProductionRecordModal(recordId) {
     const record = productionRecordsCache.find((r) => r.id === recordId);
     if (!record || !productionRecordModal) return;
-    const m = record.main || {};
-    const mat = record.material || {};
     document.getElementById('editRecordId').value = record.id;
     document.getElementById('editRecordDate').value = record.recordDate || '';
-    document.getElementById('editMainLoad').value = m.load || '';
-    document.getElementById('editMainStart').value = m.start || '';
-    document.getElementById('editMainFinish').value = m.finish || '';
-    document.getElementById('editMainProductNo').value = m.productNo || '';
-    document.getElementById('editMainThickness').value = m.thickness || '';
-    document.getElementById('editMainWidth').value = m.width || '';
-    document.getElementById('editMainHeight').value = m.height || '';
-    document.getElementById('editMainLength').value = m.length || '';
-    document.getElementById('editMainName').value = m.name || '';
-    document.getElementById('editMainOperator').value = m.operator || '';
-    document.getElementById('editMainSpeed').value = m.speed || '';
-    document.getElementById('editMainOther').value = m.other || '';
-    document.getElementById('editMatOrderNo').value = mat.orderNo || '';
-    document.getElementById('editMatThickness1').value = mat.thickness1 || '';
-    document.getElementById('editMatWidth1').value = mat.width1 || '';
-    document.getElementById('editMatWeight').value = mat.weight || '';
-    document.getElementById('editMatThickness2').value = mat.thickness2 || '';
-    document.getElementById('editMatWidth2').value = mat.width2 || '';
-    document.getElementById('editMatHeight').value = mat.height || '';
-    document.getElementById('editMatProductNo').value = mat.productNo || '';
-    document.getElementById('editMatName').value = mat.name || '';
-    document.getElementById('editMatLength').value = mat.length || '';
-    document.getElementById('editMatQty').value = mat.qty || '';
     document.getElementById('editCorrectionNote').value = record.correctionNote || '';
+    renderProductionRecordEditCards(record);
     productionRecordEditError.hidden = true;
     productionRecordModal.hidden = false;
   }
@@ -2563,42 +2673,30 @@
     }
 
     const recordDate = document.getElementById('editRecordDate').value.trim();
-    const main = {
-      ...record.main,
-      load: document.getElementById('editMainLoad').value,
-      start: document.getElementById('editMainStart').value,
-      finish: document.getElementById('editMainFinish').value,
-      productNo: document.getElementById('editMainProductNo').value,
-      thickness: document.getElementById('editMainThickness').value,
-      width: document.getElementById('editMainWidth').value,
-      height: document.getElementById('editMainHeight').value,
-      length: document.getElementById('editMainLength').value,
-      name: document.getElementById('editMainName').value,
-      operator: document.getElementById('editMainOperator').value,
-      speed: document.getElementById('editMainSpeed').value,
-      other: document.getElementById('editMainOther').value,
-    };
-    const material = {
-      ...record.material,
-      orderNo: document.getElementById('editMatOrderNo').value,
-      thickness1: document.getElementById('editMatThickness1').value,
-      width1: document.getElementById('editMatWidth1').value,
-      weight: document.getElementById('editMatWeight').value,
-      thickness2: document.getElementById('editMatThickness2').value,
-      width2: document.getElementById('editMatWidth2').value,
-      height: document.getElementById('editMatHeight').value,
-      productNo: document.getElementById('editMatProductNo').value,
-      name: document.getElementById('editMatName').value,
-      length: document.getElementById('editMatLength').value,
-      qty: document.getElementById('editMatQty').value,
-    };
+    const { mainLines, materialLines } = collectEditFormLines();
+    const { sheetRows } = normalizeProductionRecordLines(record);
+    const main = mainLines[0] || record.main || {};
+    const material = materialLines.length
+      ? {
+        ...materialLines[0],
+        qty: sumMaterialQtyValues(materialLines.map((line) => line.qty)),
+      }
+      : (record.material || {});
 
     try {
       const res = await fetch(`${API_BASE}/api/pq_form/production_records/${encodeURIComponent(id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
-        body: JSON.stringify({ main, material, recordDate, correction_note: correctionNote }),
+        body: JSON.stringify({
+          main,
+          material,
+          mainLines,
+          materialLines,
+          sheetRows,
+          recordDate,
+          correction_note: correctionNote,
+        }),
       });
       const data = await res.json();
       if (res.status === 503) {
@@ -2607,6 +2705,9 @@
           recordDate: recordDate || record.recordDate,
           main,
           material,
+          mainLines,
+          materialLines,
+          sheetRows,
           correctionNote,
           correctedAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
@@ -2899,18 +3000,13 @@
     ];
   }
 
-  async function overwriteExistingProductionRecord(tr, inAutoPage, existingRecord, sheetRow, materialData = null) {
-    const main = serializeMainRow(tr);
-    const materialTr = findMaterialRowForMain(tr, inAutoPage);
-    const material = materialData
-      || (materialTr
-        ? buildAggregatedMaterialForOrderNo(inAutoPage, getMaterialOrderNoValue(materialTr), materialTr)
-        : (existingRecord.material || {}));
+  async function overwriteExistingProductionRecord(tr, inAutoPage, existingRecord, sheetRow, materialTr = null) {
+    const resolvedMaterialTr = materialTr || findMaterialRowForMain(tr, inAutoPage);
+    const snapshot = buildProductionLinesSnapshot(tr, inAutoPage, resolvedMaterialTr, sheetRow, existingRecord);
     const fallbackRecord = {
       ...existingRecord,
-      main,
-      material,
-      sheetRow: sheetRow || existingRecord.sheetRow || null,
+      ...snapshot,
+      sheetRow: snapshot.sheetRows.find(Boolean) || existingRecord.sheetRow || null,
       productTypes: collectChecks(inAutoPage ? '#autoPage input[name="type"]' : '#moldingPage input[name="type"]'),
       machines: collectChecks(inAutoPage ? '#autoPage input[name="machine"]' : '#moldingPage input[name="machine"]'),
       correctionNote: '重複送出覆蓋',
@@ -2924,8 +3020,11 @@
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
         body: JSON.stringify({
-          main,
-          material,
+          main: snapshot.main,
+          material: snapshot.material,
+          mainLines: snapshot.mainLines,
+          materialLines: snapshot.materialLines,
+          sheetRows: snapshot.sheetRows,
           correction_note: '重複送出覆蓋',
         }),
       });
@@ -2973,8 +3072,11 @@
     }).catch(() => {});
 
     const mapped = buildMappedRowFromTr(mainTr, false);
+    const mainRowIndex = getMainRowIndex(mainTr);
     const orderDuplicate = overwriteRecord || findDuplicateByOrderNo(mainTr, inAutoPage, materialTr);
-    const sheetTargetRow = orderDuplicate?.sheetRow || findSheetRowForOrderNo(orderNo, recordDate);
+    const sheetTargetRow = orderDuplicate?.sheetRows?.[mainRowIndex]
+      ?? orderDuplicate?.sheetRow
+      ?? null;
     const payload = { rows: [mapped] };
     if (sheetTargetRow) payload.targetRow = sheetTargetRow;
 
@@ -3004,13 +3106,13 @@
           inAutoPage,
           sameDayOrderRecord,
           data.row,
-          materialData,
+          materialTr,
         );
         return;
       }
 
       showOutsideMessage(mainTr, '已送出（伺服器寫入）', 'success');
-      const record = buildProductionRecord(mainTr, data.row, inAutoPage, materialData);
+      const record = buildProductionRecord(mainTr, data.row, inAutoPage, materialTr);
       const saved = await saveProductionRecordToServer(record);
       upsertProductionRecord(saved || record);
     } catch (err) {

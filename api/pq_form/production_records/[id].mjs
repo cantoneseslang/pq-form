@@ -1,8 +1,12 @@
 import { getSupabaseAdmin, isSupabaseConfigured } from '../../../lib/supabase.js';
 import {
   dbRowToClient,
-  writeMainDataToSheetRow,
+  writeMainLinesToSheet,
   normalizeRecordDate,
+  packMainData,
+  packMaterialData,
+  unpackMainData,
+  unpackMaterialData,
 } from '../../../lib/productionRecords.js';
 
 export const config = { runtime: 'nodejs' };
@@ -75,7 +79,15 @@ export default async function handler(req, res) {
     }
 
     const body = await parseJsonBody(req);
-    const { main, material, correction_note: correctionNote, recordDate } = body;
+    const {
+      main,
+      material,
+      mainLines,
+      materialLines,
+      sheetRows,
+      correction_note: correctionNote,
+      recordDate,
+    } = body;
 
     if (!main) {
       return res.status(400).json({ success: false, error: 'main is required' });
@@ -84,13 +96,24 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'correction_note is required' });
     }
 
+    const resolvedMainLines = Array.isArray(mainLines) && mainLines.length
+      ? mainLines
+      : unpackMainData(main).mainLines;
+    const resolvedMaterialLines = Array.isArray(materialLines) && materialLines.length
+      ? materialLines
+      : unpackMaterialData(material || {}).materialLines;
+    const resolvedSheetRows = Array.isArray(sheetRows) && sheetRows.length
+      ? sheetRows
+      : unpackMaterialData(material || {}).sheetRows;
+
     const now = new Date().toISOString();
     const updatePayload = {
-      main_data: main,
-      material_data: material || {},
+      main_data: packMainData(main, resolvedMainLines),
+      material_data: packMaterialData(material || {}, resolvedMaterialLines, resolvedSheetRows),
       correction_note: String(correctionNote).trim(),
       updated_at: now,
       corrected_at: now,
+      sheet_row: resolvedSheetRows[0] || existing.sheet_row || null,
     };
     const normalizedDate = normalizeRecordDate(recordDate);
     if (normalizedDate) {
@@ -106,8 +129,11 @@ export default async function handler(req, res) {
 
     if (error) throw error;
 
-    if (existing.sheet_row) {
-      await writeMainDataToSheetRow(main, existing.sheet_row, existing.sheet_name);
+    const rowsToWrite = resolvedSheetRows.length
+      ? resolvedSheetRows
+      : (existing.sheet_row ? [existing.sheet_row] : []);
+    if (rowsToWrite.length && resolvedMainLines.length) {
+      await writeMainLinesToSheet(resolvedMainLines, rowsToWrite, existing.sheet_name);
     }
 
     return res.status(200).json({ success: true, record: dbRowToClient(data) });

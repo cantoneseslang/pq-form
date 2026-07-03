@@ -518,53 +518,10 @@
       </div>
       <form id="productionRecordEditForm" class="production-record-modal__body">
         <input type="hidden" id="editRecordId" />
-        <fieldset class="production-record-fieldset">
-          <legend>上段（品質檢定）</legend>
-          <div class="production-record-form-grid production-record-form-grid--main-row1">
-            <label class="production-record-field-date">期日<input type="text" id="editRecordDate" placeholder="YYYY/MM/DD" autocomplete="off" /></label>
-            <label class="production-record-field-time">上料時間<input type="text" id="editMainLoad" /></label>
-            <label class="production-record-field-time">開始時間<input type="text" id="editMainStart" /></label>
-            <label class="production-record-field-time">完成時間<input type="text" id="editMainFinish" /></label>
-            <label class="production-record-field-product-no">產品編號<input type="text" id="editMainProductNo" /></label>
-          </div>
-          <div class="production-record-form-grid production-record-form-grid--main-spec">
-            <label>材料厚度<input type="text" id="editMainThickness" /></label>
-            <label>闊度<input type="text" id="editMainWidth" /></label>
-            <label>高度<input type="text" id="editMainHeight" /></label>
-            <label>長度<input type="text" id="editMainLength" /></label>
-          </div>
-          <div class="production-record-form-grid production-record-form-grid--main-bottom">
-            <label class="production-record-field-wide">產品名稱<input type="text" id="editMainName" /></label>
-            <label class="production-record-field-narrow">轉機員/檢查員
-              <select id="editMainOperator">
-                <option value=""></option>
-                <option value="達">達</option>
-                <option value="群">群</option>
-                <option value="嫻">嫻</option>
-              </select>
-            </label>
-            <label class="production-record-field-narrow">速度<input type="text" id="editMainSpeed" /></label>
-            <label class="production-record-field-narrow">其他<input type="text" id="editMainOther" /></label>
-          </div>
-        </fieldset>
-        <fieldset class="production-record-fieldset">
-          <legend>用料記録</legend>
-          <div class="production-record-form-grid production-record-form-grid--mat-top">
-            <label>單號<input type="text" id="editMatOrderNo" /></label>
-            <label>材料厚度<input type="text" id="editMatThickness1" /></label>
-            <label>闊度<input type="text" id="editMatWidth1" /></label>
-            <label>卷材重量<input type="text" id="editMatWeight" /></label>
-            <label>材料厚度2<input type="text" id="editMatThickness2" /></label>
-            <label>闊度2<input type="text" id="editMatWidth2" /></label>
-            <label>高度<input type="text" id="editMatHeight" /></label>
-            <label>產品編號<input type="text" id="editMatProductNo" /></label>
-          </div>
-          <div class="production-record-form-grid production-record-form-grid--mat-bottom">
-            <label class="production-record-field-wide">產品名稱<input type="text" id="editMatName" /></label>
-            <label>長度<input type="text" id="editMatLength" /></label>
-            <label>數量<input type="text" id="editMatQty" /></label>
-          </div>
-        </fieldset>
+        <div class="production-record-form-grid production-record-form-grid--main-row1 production-record-date-row">
+          <label class="production-record-field-date">期日<input type="text" id="editRecordDate" placeholder="YYYY/MM/DD" autocomplete="off" /></label>
+        </div>
+        <div id="productionRecordEditCards" class="production-record-edit-cards"></div>
         <label class="production-record-note-label">修正理由（必填）
           <textarea id="editCorrectionNote" rows="2" placeholder="請說明修正原因"></textarea>
         </label>
@@ -577,7 +534,7 @@
     </div>
   </div>
 
-    <script src="app.js?v=20260703-43"></script>
+    <script src="app.js?v=20260703-44"></script>
   <noscript>請啟用JavaScript</noscript>
   <script>
     // 初始化時、工具列のチェック状態や列幅調整は app.js が担当
