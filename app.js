@@ -2173,7 +2173,81 @@
     return record?.main || {};
   }
 
+  function getProductGroupsFromForm(inAutoPage) {
+    const allMainLines = collectMainLinesFromForm(inAutoPage);
+    const allMaterialLines = collectAllMaterialLinesFromForm(inAutoPage);
+    const productSet = new Set();
+    allMainLines.forEach((line) => {
+      const p = normalizeProductCodeForSubmit(line.productNo);
+      if (p) productSet.add(p);
+    });
+    allMaterialLines.forEach((line) => {
+      const p = normalizeProductCodeForSubmit(line.productNo);
+      if (p) productSet.add(p);
+    });
+    return [...productSet].map((productNo) => {
+      const mainGlobalIndices = allMainLines
+        .map((line, idx) => ({ line, idx }))
+        .filter(({ line }) => normalizeProductCodeForSubmit(line.productNo) === productNo)
+        .map(({ idx }) => idx);
+      return {
+        productNo,
+        mainLines: mainGlobalIndices.map((idx) => allMainLines[idx]),
+        materialLines: allMaterialLines.filter(
+          (line) => normalizeProductCodeForSubmit(line.productNo) === productNo,
+        ),
+        mainGlobalIndices,
+      };
+    });
+  }
+
+  function buildProductionLinesSnapshotForGroup(group, mainTr, inAutoPage, materialTr, sheetRow, existingRecord, clickedMainIndex) {
+    let mainLines = group.mainLines.length ? [...group.mainLines] : [];
+    let materialLines = group.materialLines.length ? [...group.materialLines] : [];
+    const clickedProduct = normalizeProductCodeForSubmit(serializeMainRow(mainTr).productNo);
+
+    if (!mainLines.length && clickedProduct === group.productNo) {
+      mainLines = [serializeMainRow(mainTr)];
+    }
+    if (!materialLines.length && materialTr && normalizeProductCodeForSubmit(serializeMaterialRow(materialTr).productNo) === group.productNo) {
+      materialLines = [serializeMaterialRow(materialTr)];
+    }
+
+    let sheetRows = existingRecord?.sheetRows?.length === mainLines.length
+      ? [...existingRecord.sheetRows]
+      : mainLines.map(() => null);
+    if (!sheetRows.length && existingRecord?.sheetRow) sheetRows = [existingRecord.sheetRow];
+    while (sheetRows.length < mainLines.length) sheetRows.push(null);
+
+    if (clickedMainIndex >= 0 && sheetRow && group.mainGlobalIndices.includes(clickedMainIndex)) {
+      const localIdx = group.mainGlobalIndices.indexOf(clickedMainIndex);
+      sheetRows[localIdx] = sheetRow;
+    } else if (sheetRow && !sheetRows.filter(Boolean).length) {
+      sheetRows[0] = sheetRow;
+    }
+
+    const material = summarizeMaterialForProductionRecord(materialLines);
+    const main = summarizeMainForProductionRecord(mainLines) || mainLines[0] || serializeMainRow(mainTr);
+
+    return { main, material, mainLines, materialLines, sheetRows };
+  }
+
   function buildProductionLinesSnapshot(mainTr, inAutoPage, materialTr, sheetRow, existingRecord = null) {
+    const groups = getProductGroupsFromForm(inAutoPage);
+    const clickedProduct = normalizeProductCodeForSubmit(serializeMainRow(mainTr).productNo);
+    const group = groups.find((g) => g.productNo === clickedProduct) || groups[0];
+    if (group) {
+      return buildProductionLinesSnapshotForGroup(
+        group,
+        mainTr,
+        inAutoPage,
+        materialTr,
+        sheetRow,
+        existingRecord,
+        getMainRowIndex(mainTr),
+      );
+    }
+
     const mainRowIndex = getMainRowIndex(mainTr);
     let mainLines = collectMainLinesFromForm(inAutoPage);
     let materialLines = collectAllMaterialLinesFromForm(inAutoPage);
@@ -2364,10 +2438,7 @@
     return matches.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
   }
 
-  function findDuplicateFormBatch(mainTr, inAutoPage) {
-    const recordDate = getFormDateString(inAutoPage);
-    const pageType = getProductionPageType(inAutoPage);
-    const productNo = normalizeProductCodeForSubmit(serializeMainRow(mainTr).productNo);
+  function findDuplicateFormBatchByProduct(recordDate, pageType, productNo) {
     if (!recordDate || !productNo) return null;
     const matches = productionRecordsCache.filter((record) =>
       isActiveProductionRecord(record)
@@ -2376,6 +2447,14 @@
       && normalizeProductCodeForSubmit(record.main?.productNo) === productNo);
     if (!matches.length) return null;
     return matches.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+  }
+
+  function findDuplicateFormBatch(mainTr, inAutoPage) {
+    return findDuplicateFormBatchByProduct(
+      getFormDateString(inAutoPage),
+      getProductionPageType(inAutoPage),
+      normalizeProductCodeForSubmit(serializeMainRow(mainTr).productNo),
+    );
   }
 
   function findDuplicateByOrderNo(mainTr, inAutoPage, materialTr = null) {
@@ -3051,16 +3130,19 @@
     ];
   }
 
-  async function overwriteExistingProductionRecord(tr, inAutoPage, existingRecord, sheetRow, materialTr = null) {
-    const resolvedMaterialTr = materialTr || findMaterialRowForMain(tr, inAutoPage);
-    const snapshot = buildProductionLinesSnapshot(tr, inAutoPage, resolvedMaterialTr, sheetRow, existingRecord);
+  async function patchProductionRecordOnServer(existingRecord, snapshot, options = {}) {
+    const {
+      correctionNote = '重複送出覆蓋',
+      productTypes = existingRecord.productTypes,
+      machines = existingRecord.machines,
+    } = options;
     const fallbackRecord = {
       ...existingRecord,
       ...snapshot,
       sheetRow: snapshot.sheetRows.find(Boolean) || existingRecord.sheetRow || null,
-      productTypes: collectChecks(inAutoPage ? '#autoPage input[name="type"]' : '#moldingPage input[name="type"]'),
-      machines: collectChecks(inAutoPage ? '#autoPage input[name="machine"]' : '#moldingPage input[name="machine"]'),
-      correctionNote: '重複送出覆蓋',
+      productTypes,
+      machines,
+      correctionNote,
       correctedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     };
@@ -3076,22 +3158,77 @@
           mainLines: snapshot.mainLines,
           materialLines: snapshot.materialLines,
           sheetRows: snapshot.sheetRows,
-          correction_note: '重複送出覆蓋',
+          correction_note: correctionNote,
         }),
       });
       const data = await res.json();
       if (res.status === 503) {
         upsertProductionRecord(fallbackRecord);
-        return;
+        return fallbackRecord;
       }
       if (data.success && data.record) {
         upsertProductionRecord(data.record);
-        return;
+        return data.record;
       }
     } catch (e) {
-      console.warn('overwriteExistingProductionRecord failed', e);
+      console.warn('patchProductionRecordOnServer failed', e);
     }
     upsertProductionRecord(fallbackRecord);
+    return fallbackRecord;
+  }
+
+  async function persistAllProductionRecordsFromForm(mainTr, inAutoPage, sheetRow, materialTr = null) {
+    const recordDate = getFormDateString(inAutoPage);
+    const pageType = getProductionPageType(inAutoPage);
+    const clickedMainIndex = getMainRowIndex(mainTr);
+    const resolvedMaterialTr = materialTr || findMaterialRowForMain(mainTr, inAutoPage);
+    const groups = getProductGroupsFromForm(inAutoPage);
+    const productTypes = collectChecks(inAutoPage ? '#autoPage input[name="type"]' : '#moldingPage input[name="type"]');
+    const machines = collectChecks(inAutoPage ? '#autoPage input[name="machine"]' : '#moldingPage input[name="machine"]');
+
+    if (!groups.length) {
+      const record = buildProductionRecord(mainTr, sheetRow, inAutoPage, resolvedMaterialTr);
+      const saved = await saveProductionRecordToServer(record);
+      upsertProductionRecord(saved || record);
+      return 1;
+    }
+
+    let savedCount = 0;
+    for (const group of groups) {
+      const existing = findDuplicateFormBatchByProduct(recordDate, pageType, group.productNo);
+      const snapshot = buildProductionLinesSnapshotForGroup(
+        group,
+        mainTr,
+        inAutoPage,
+        resolvedMaterialTr,
+        sheetRow,
+        existing,
+        clickedMainIndex,
+      );
+      if (!snapshot.mainLines.length && !snapshot.materialLines.length) continue;
+
+      if (existing) {
+        await patchProductionRecordOnServer(existing, snapshot, { productTypes, machines });
+      } else {
+        const record = {
+          id: crypto.randomUUID(),
+          recordDate,
+          pageType,
+          productTypes,
+          machines,
+          ...snapshot,
+          sheetRow: snapshot.sheetRows.find(Boolean) || null,
+          sheetName: 'pq-form',
+          correctionNote: '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        };
+        const saved = await saveProductionRecordToServer(record);
+        upsertProductionRecord(saved || record);
+      }
+      savedCount += 1;
+    }
+    return savedCount;
   }
 
   async function performRowSend(mainTr, inAutoPage, options = {}) {
@@ -3124,10 +3261,18 @@
 
     const mapped = buildMappedRowFromTr(mainTr, false);
     const mainRowIndex = getMainRowIndex(mainTr);
+    const clickedProduct = normalizeProductCodeForSubmit(serializeMainRow(mainTr).productNo);
     const orderDuplicate = overwriteRecord || findDuplicateFormBatch(mainTr, inAutoPage);
-    const sheetTargetRow = orderDuplicate?.sheetRows?.[mainRowIndex]
-      ?? orderDuplicate?.sheetRow
-      ?? null;
+    let sheetTargetRow = orderDuplicate?.sheetRow ?? null;
+    if (orderDuplicate?.sheetRows?.length) {
+      const productGroup = getProductGroupsFromForm(inAutoPage).find((g) => g.productNo === clickedProduct);
+      const localIdx = productGroup ? productGroup.mainGlobalIndices.indexOf(mainRowIndex) : -1;
+      if (localIdx >= 0 && orderDuplicate.sheetRows[localIdx]) {
+        sheetTargetRow = orderDuplicate.sheetRows[localIdx];
+      } else if (mainRowIndex >= 0 && orderDuplicate.sheetRows[mainRowIndex]) {
+        sheetTargetRow = orderDuplicate.sheetRows[mainRowIndex];
+      }
+    }
     const payload = { rows: [mapped] };
     if (sheetTargetRow) payload.targetRow = sheetTargetRow;
 
@@ -3146,26 +3291,15 @@
         return;
       }
 
-      const sameDayOrderRecord = orderDuplicate && orderDuplicate.recordDate === recordDate
-        ? orderDuplicate
-        : null;
-
-      if (sameDayOrderRecord) {
-        showOutsideMessage(mainTr, '已更新紀錄（全行保存・伺服器寫入）', 'success');
-        await overwriteExistingProductionRecord(
-          mainTr,
-          inAutoPage,
-          sameDayOrderRecord,
-          data.row,
-          materialTr,
-        );
-        return;
+      const savedCount = await persistAllProductionRecordsFromForm(mainTr, inAutoPage, data.row, materialTr);
+      const hadDuplicate = orderDuplicate && orderDuplicate.recordDate === recordDate;
+      let successMsg = '已送出（伺服器寫入）';
+      if (savedCount > 1) {
+        successMsg = `已保存 ${savedCount} 筆產品紀錄（伺服器寫入）`;
+      } else if (hadDuplicate || savedCount === 1) {
+        successMsg = '已更新紀錄（全行保存・伺服器寫入）';
       }
-
-      showOutsideMessage(mainTr, '已送出（伺服器寫入）', 'success');
-      const record = buildProductionRecord(mainTr, data.row, inAutoPage, materialTr);
-      const saved = await saveProductionRecordToServer(record);
-      upsertProductionRecord(saved || record);
+      showOutsideMessage(mainTr, successMsg, 'success');
     } catch (err) {
       console.error(err);
       showOutsideMessage(mainTr, '送出失敗', 'error');
