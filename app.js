@@ -2121,6 +2121,14 @@
     return [...tbody.querySelectorAll('tr')].filter(isMainDataRow).map((tr) => serializeMainRow(tr));
   }
 
+  function collectAllMaterialLinesFromForm(inAutoPage) {
+    const body = getMaterialBodyForPage(inAutoPage);
+    if (!body) return [];
+    return [...body.querySelectorAll('tr')]
+      .filter((tr) => !isMaterialRowTemplateEmpty(tr))
+      .map((tr) => serializeMaterialRow(tr));
+  }
+
   function collectMaterialLinesForOrder(inAutoPage, orderNo) {
     return getMaterialRowsByOrderNo(inAutoPage, orderNo).map((tr) => serializeMaterialRow(tr));
   }
@@ -2137,6 +2145,27 @@
     };
   }
 
+  function summarizeMaterialForProductionRecord(materialLines) {
+    if (!Array.isArray(materialLines) || !materialLines.length) return {};
+    const first = materialLines[0];
+    const orderNos = [...new Set(materialLines.map((line) => normalizeOrderNo(line.orderNo)).filter(Boolean))];
+    const orderNo = orderNos.length === 1
+      ? orderNos[0]
+      : `複數單號(${materialLines.length})`;
+    return {
+      ...first,
+      orderNo,
+      qty: sumMaterialQtyValues(materialLines.map((line) => line.qty)),
+    };
+  }
+
+  function getProductionRecordDisplayMaterial(record) {
+    const { materialLines } = normalizeProductionRecordLines(record);
+    if (materialLines.length > 1) return summarizeMaterialForProductionRecord(materialLines);
+    if (materialLines.length === 1) return materialLines[0];
+    return record?.material || {};
+  }
+
   function getProductionRecordDisplayMain(record) {
     const { mainLines } = normalizeProductionRecordLines(record);
     if (mainLines.length > 1) return summarizeMainForProductionRecord(mainLines);
@@ -2146,9 +2175,8 @@
 
   function buildProductionLinesSnapshot(mainTr, inAutoPage, materialTr, sheetRow, existingRecord = null) {
     const mainRowIndex = getMainRowIndex(mainTr);
-    const orderNo = materialTr ? getMaterialOrderNoValue(materialTr) : '';
     let mainLines = collectMainLinesFromForm(inAutoPage);
-    let materialLines = orderNo ? collectMaterialLinesForOrder(inAutoPage, orderNo) : [];
+    let materialLines = collectAllMaterialLinesFromForm(inAutoPage);
 
     if (!mainLines.length) mainLines = [serializeMainRow(mainTr)];
     if (!materialLines.length && materialTr) materialLines = [serializeMaterialRow(materialTr)];
@@ -2159,12 +2187,7 @@
     if (mainRowIndex >= 0 && sheetRow) sheetRows[mainRowIndex] = sheetRow;
     else if (sheetRow && !sheetRows.filter(Boolean).length) sheetRows[0] = sheetRow;
 
-    const material = materialLines.length
-      ? {
-        ...materialLines[0],
-        qty: sumMaterialQtyValues(materialLines.map((line) => line.qty)),
-      }
-      : {};
+    const material = summarizeMaterialForProductionRecord(materialLines);
     const main = summarizeMainForProductionRecord(mainLines) || mainLines[0] || serializeMainRow(mainTr);
 
     return { main, material, mainLines, materialLines, sheetRows };
@@ -2337,6 +2360,20 @@
       isActiveProductionRecord(record)
       && record.recordDate === preview.recordDate
       && getProductionRecordDuplicateKey(record) === key);
+    if (!matches.length) return null;
+    return matches.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
+  }
+
+  function findDuplicateFormBatch(mainTr, inAutoPage) {
+    const recordDate = getFormDateString(inAutoPage);
+    const pageType = getProductionPageType(inAutoPage);
+    const productNo = normalizeProductCodeForSubmit(serializeMainRow(mainTr).productNo);
+    if (!recordDate || !productNo) return null;
+    const matches = productionRecordsCache.filter((record) =>
+      isActiveProductionRecord(record)
+      && record.recordDate === recordDate
+      && record.pageType === pageType
+      && normalizeProductCodeForSubmit(record.main?.productNo) === productNo);
     if (!matches.length) return null;
     return matches.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
   }
@@ -2526,7 +2563,7 @@
 
     return records.map((record) => {
       const m = getProductionRecordDisplayMain(record);
-      const mat = record.material || {};
+      const mat = getProductionRecordDisplayMaterial(record);
       const corrected = !!record.correctedAt || !!record.correctionNote;
       return `<tr data-record-id="${escapeHtml(record.id)}" class="${corrected ? 'is-corrected' : ''}">
         <td>${escapeHtml(record.recordDate)}</td>
@@ -2695,12 +2732,7 @@
     const { mainLines, materialLines } = collectEditFormLines();
     const { sheetRows } = normalizeProductionRecordLines(record);
     const main = summarizeMainForProductionRecord(mainLines) || mainLines[0] || record.main || {};
-    const material = materialLines.length
-      ? {
-        ...materialLines[0],
-        qty: sumMaterialQtyValues(materialLines.map((line) => line.qty)),
-      }
-      : (record.material || {});
+    const material = summarizeMaterialForProductionRecord(materialLines) || record.material || {};
 
     try {
       const res = await fetch(`${API_BASE}/api/pq_form/production_records/${encodeURIComponent(id)}`, {
@@ -2905,7 +2937,7 @@
 
   function showDuplicateConfirmModal(existingRecord, reason = 'spec') {
     const m = getProductionRecordDisplayMain(existingRecord);
-    const mat = existingRecord?.material || {};
+    const mat = getProductionRecordDisplayMaterial(existingRecord);
     const msgEl = document.getElementById('duplicateRecordModalMessage');
     if (msgEl) {
       if (reason === 'orderNo') {
@@ -3092,7 +3124,7 @@
 
     const mapped = buildMappedRowFromTr(mainTr, false);
     const mainRowIndex = getMainRowIndex(mainTr);
-    const orderDuplicate = overwriteRecord || findDuplicateByOrderNo(mainTr, inAutoPage, materialTr);
+    const orderDuplicate = overwriteRecord || findDuplicateFormBatch(mainTr, inAutoPage);
     const sheetTargetRow = orderDuplicate?.sheetRows?.[mainRowIndex]
       ?? orderDuplicate?.sheetRow
       ?? null;
@@ -3119,7 +3151,7 @@
         : null;
 
       if (sameDayOrderRecord) {
-        showOutsideMessage(mainTr, '已更新紀錄（同單號・數量合計・伺服器寫入）', 'success');
+        showOutsideMessage(mainTr, '已更新紀錄（全行保存・伺服器寫入）', 'success');
         await overwriteExistingProductionRecord(
           mainTr,
           inAutoPage,
@@ -3247,9 +3279,9 @@
 
         const sendOptions = { materialTr };
 
-        const orderDuplicate = findDuplicateByOrderNo(mainTr, inAutoPage, materialTr);
-        if (orderDuplicate) {
-          await performRowSend(mainTr, inAutoPage, { ...sendOptions, overwriteRecord: orderDuplicate });
+        const batchDuplicate = findDuplicateFormBatch(mainTr, inAutoPage);
+        if (batchDuplicate) {
+          await performRowSend(mainTr, inAutoPage, { ...sendOptions, overwriteRecord: batchDuplicate });
           return;
         }
 
