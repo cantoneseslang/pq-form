@@ -37,6 +37,14 @@
     return Number.isFinite(num) ? num.toFixed(1) : text;
   }
 
+  /** 材料厚度記録は 0.8A のまま、產品名稱・plist 照合では 0.8 として扱う */
+  function thicknessForProductLookup(value) {
+    const formatted = formatThicknessValue(value);
+    if (!formatted) return '';
+    if (formatted.toUpperCase() === '0.8A') return '0.8';
+    return formatted;
+  }
+
   function thicknessMatches(a, b) {
     if (!a && !b) return true;
     if (!a || !b) return false;
@@ -995,7 +1003,7 @@
 
   function getMaterialRowSpecValues(row) {
     return {
-      thickness: getThicknessValue(row, 5),
+      thickness: thicknessForProductLookup(getThicknessValue(row, 5)),
       width: row.querySelector('td:nth-child(6) input')?.value?.trim() || '',
       height: row.querySelector('td:nth-child(7) input')?.value?.trim() || '',
       length: row.querySelector('td:nth-child(10) input')?.value?.trim() || '',
