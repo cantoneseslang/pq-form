@@ -2937,7 +2937,10 @@
 
     const mapped = buildMappedRowFromTr(mainTr, false);
     const payload = { rows: [mapped] };
-    if (overwriteRecord?.sheetRow) payload.targetRow = overwriteRecord.sheetRow;
+    const existingForSheet = overwriteRecord
+      || (materialTr ? findDuplicateByOrderNo(mainTr, inAutoPage, materialTr) : null);
+    const sheetTargetRow = existingForSheet?.sheetRow;
+    if (sheetTargetRow) payload.targetRow = sheetTargetRow;
 
     try {
       const res = await fetch(`${API_BASE}/api/pq_form/submit`, {
@@ -2949,13 +2952,28 @@
       const data = await res.json();
       console.log('submit result', data);
       if (!data.success) {
-        showOutsideMessage(mainTr, '送出失敗: ' + (data.error || ''), 'error');
+        const err = data.error || '';
+        if (err.includes('満杯')) {
+          showOutsideMessage(
+            mainTr,
+            `送出失敗: ${err}。Google表 8–50 行を整理するか、生產紀錄から同單號を修正してください。`,
+            'error',
+          );
+        } else {
+          showOutsideMessage(mainTr, '送出失敗: ' + err, 'error');
+        }
         return;
       }
 
-      if (overwriteRecord) {
-        showOutsideMessage(mainTr, '已覆蓋舊紀錄（伺服器寫入）', 'success');
-        await overwriteExistingProductionRecord(mainTr, inAutoPage, overwriteRecord, data.row, materialData);
+      if (overwriteRecord || existingForSheet) {
+        showOutsideMessage(mainTr, '已更新紀錄（同單號・數量合計・伺服器寫入）', 'success');
+        await overwriteExistingProductionRecord(
+          mainTr,
+          inAutoPage,
+          overwriteRecord || existingForSheet,
+          data.row,
+          materialData,
+        );
         return;
       }
 
@@ -3078,12 +3096,8 @@
 
         const orderDuplicate = findDuplicateByOrderNo(mainTr, inAutoPage, materialTr);
         if (orderDuplicate) {
-          const orderChoice = await showDuplicateConfirmModal(orderDuplicate, 'orderNo');
-          if (orderChoice === 'cancel') return;
-          if (orderChoice === 'overwrite') {
-            await performRowSend(mainTr, inAutoPage, { ...sendOptions, overwriteRecord: orderDuplicate });
-            return;
-          }
+          await performRowSend(mainTr, inAutoPage, { ...sendOptions, overwriteRecord: orderDuplicate });
+          return;
         }
 
         const specDuplicate = findDuplicateProductionRecord(mainTr, inAutoPage, materialTr);
