@@ -2125,6 +2125,25 @@
     return getMaterialRowsByOrderNo(inAutoPage, orderNo).map((tr) => serializeMaterialRow(tr));
   }
 
+  function summarizeMainForProductionRecord(mainLines) {
+    if (!Array.isArray(mainLines) || !mainLines.length) return {};
+    const first = mainLines[0];
+    const last = mainLines[mainLines.length - 1];
+    return {
+      ...first,
+      load: first.load || '',
+      start: first.start || '',
+      finish: last.finish || first.finish || '',
+    };
+  }
+
+  function getProductionRecordDisplayMain(record) {
+    const { mainLines } = normalizeProductionRecordLines(record);
+    if (mainLines.length > 1) return summarizeMainForProductionRecord(mainLines);
+    if (mainLines.length === 1) return mainLines[0];
+    return record?.main || {};
+  }
+
   function buildProductionLinesSnapshot(mainTr, inAutoPage, materialTr, sheetRow, existingRecord = null) {
     const mainRowIndex = getMainRowIndex(mainTr);
     const orderNo = materialTr ? getMaterialOrderNoValue(materialTr) : '';
@@ -2146,7 +2165,7 @@
         qty: sumMaterialQtyValues(materialLines.map((line) => line.qty)),
       }
       : {};
-    const main = mainLines[mainRowIndex >= 0 ? mainRowIndex : 0] || mainLines[0] || serializeMainRow(mainTr);
+    const main = summarizeMainForProductionRecord(mainLines) || mainLines[0] || serializeMainRow(mainTr);
 
     return { main, material, mainLines, materialLines, sheetRows };
   }
@@ -2506,7 +2525,7 @@
     }
 
     return records.map((record) => {
-      const m = record.main || {};
+      const m = getProductionRecordDisplayMain(record);
       const mat = record.material || {};
       const corrected = !!record.correctedAt || !!record.correctionNote;
       return `<tr data-record-id="${escapeHtml(record.id)}" class="${corrected ? 'is-corrected' : ''}">
@@ -2675,7 +2694,7 @@
     const recordDate = document.getElementById('editRecordDate').value.trim();
     const { mainLines, materialLines } = collectEditFormLines();
     const { sheetRows } = normalizeProductionRecordLines(record);
-    const main = mainLines[0] || record.main || {};
+    const main = summarizeMainForProductionRecord(mainLines) || mainLines[0] || record.main || {};
     const material = materialLines.length
       ? {
         ...materialLines[0],
@@ -2885,7 +2904,7 @@
   }
 
   function showDuplicateConfirmModal(existingRecord, reason = 'spec') {
-    const m = existingRecord?.main || {};
+    const m = getProductionRecordDisplayMain(existingRecord);
     const mat = existingRecord?.material || {};
     const msgEl = document.getElementById('duplicateRecordModalMessage');
     if (msgEl) {
