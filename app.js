@@ -968,6 +968,23 @@
     panel.hidden = false;
     panel.classList.remove('product-hint-outside--success', 'product-hint-outside--error');
     panel.classList.add(kind === 'success' ? 'product-hint-outside--success' : 'product-hint-outside--error');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }
+
+  function getSendFeedbackRow(mainTr, materialTr) {
+    return materialTr || mainTr;
+  }
+
+  function isTransferOnlyProduct(mainTr, inAutoPage, materialTr = null) {
+    const productNo = normalizeProductCodeForSubmit(serializeMainRow(mainTr).productNo);
+    const group = getProductGroupsFromForm(inAutoPage).find((g) => g.productNo === productNo);
+    const mainLines = group?.mainLines?.length ? group.mainLines : [serializeMainRow(mainTr)];
+    if (!mainLines.length) return false;
+    if (!mainLines.every((line) => String(line.speed || '').trim() === '轉機')) return false;
+    const materialLines = group?.materialLines?.length
+      ? group.materialLines
+      : (materialTr ? [serializeMaterialRow(materialTr)] : []);
+    return !materialLines.some((line) => parseInt(String(line.qty || '').trim(), 10) > 0);
   }
 
   function showProductResolveHint(row, message) {
@@ -1136,10 +1153,14 @@
     };
   }
 
-  function validateMaterialRowBeforeSend(materialTr, hintRow) {
+  function validateMaterialRowBeforeSend(materialTr, hintRow, mainTr = null, inAutoPage = false) {
     if (!materialTr) {
       showOutsideMessage(hintRow, '搵唔到對應嘅用料記錄', 'error');
       return false;
+    }
+    if (mainTr && isTransferOnlyProduct(mainTr, inAutoPage, materialTr)) {
+      hideProductResolveHint(hintRow);
+      return true;
     }
     const data = serializeMaterialRow(materialTr);
     const missing = [];
@@ -1188,6 +1209,7 @@
     }
     hint.textContent = message;
     hint.hidden = false;
+    if (message) hint.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }
 
   function validateMachineBeforeSend(inAutoPage) {
@@ -3241,6 +3263,7 @@
 
   async function performRowSend(mainTr, inAutoPage, options = {}) {
     const { overwriteRecord = null, materialTr = null } = options;
+    const feedbackRow = getSendFeedbackRow(mainTr, materialTr);
     const materialData = materialTr
       ? buildAggregatedMaterialForOrderNo(inAutoPage, getMaterialOrderNoValue(materialTr), materialTr)
       : null;
@@ -3295,7 +3318,7 @@
       }
       console.log('submit result', data);
       if (!data.success) {
-        showOutsideMessage(mainTr, '送出失敗: ' + (data.error || ''), 'error');
+        showOutsideMessage(feedbackRow, '送出失敗: ' + (data.error || ''), 'error');
         return;
       }
 
@@ -3334,10 +3357,10 @@
         successMsg = '已更新紀錄（全行保存・伺服器寫入）';
       }
       if (dailyReportNote) successMsg += dailyReportNote;
-      showOutsideMessage(mainTr, successMsg, 'success');
+      showOutsideMessage(feedbackRow, successMsg, 'success');
     } catch (err) {
       console.error(err);
-      showOutsideMessage(mainTr, '送出失敗', 'error');
+      showOutsideMessage(feedbackRow, '送出失敗', 'error');
     }
   }
 
@@ -3442,7 +3465,7 @@
       (async () => {
         if (!validateMachineBeforeSend(inAutoPage)) return;
         if (!validateRowBeforeSend(mainTr)) return;
-        if (!validateMaterialRowBeforeSend(materialTr, materialTr || mainTr)) return;
+        if (!validateMaterialRowBeforeSend(materialTr, materialTr || mainTr, mainTr, inAutoPage)) return;
 
         await fetchProductionRecordsFromServer();
 
