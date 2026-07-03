@@ -1523,7 +1523,6 @@
     const { thickness, width, height, code, name, length } = getTopProductSyncFields(topRow);
     const thicknessSelect1 = getThicknessSelect(materialRow, 2);
     const thicknessSelect2 = getThicknessSelect(materialRow, 5);
-    const widthInput1 = materialRow.querySelector('td:nth-child(3) input');
     const widthInput2 = materialRow.querySelector('td:nth-child(6) input');
     const heightInput = materialRow.querySelector('td:nth-child(7) input');
     const codeInput = materialRow.querySelector('td:nth-child(8) input');
@@ -1532,7 +1531,6 @@
 
     setThicknessSelectValue(thicknessSelect1, thickness);
     setThicknessSelectValue(thicknessSelect2, thickness);
-    if (widthInput1) widthInput1.value = width;
     if (widthInput2) widthInput2.value = width;
     if (heightInput) heightInput.value = height;
     if (codeInput) codeInput.value = code;
