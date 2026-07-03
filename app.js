@@ -1144,8 +1144,8 @@
     if (missing.length) {
       messages.push(`請填寫用料記錄：${missing.join('、')}`);
     }
-    if (!data.incomplete && (!data.complete || !data.oldCoil)) {
-      messages.push('請勾選用料記錄嘅「完成」同「舊卷材」');
+    if (!data.incomplete && !data.complete && !data.oldCoil) {
+      messages.push('請勾選用料記錄嘅「完成」或「舊卷材」');
     }
     if (messages.length) {
       showOutsideMessage(hintRow, messages.join('；'), 'error');
