@@ -1128,6 +1128,14 @@
     return { mainTr, materialTr, rowIndex };
   }
 
+  function getMaterialRowCheckboxes(tr) {
+    return {
+      complete: !!tr.querySelector('td:nth-child(12) input[type="checkbox"]')?.checked,
+      oldCoil: !!tr.querySelector('td:nth-child(13) input[type="checkbox"]')?.checked,
+      incomplete: tr.querySelector('td:nth-child(14) input[type="checkbox"]')?.checked ?? true,
+    };
+  }
+
   function validateMaterialRowBeforeSend(materialTr, hintRow) {
     if (!materialTr) {
       showOutsideMessage(hintRow, '搵唔到對應嘅用料記錄', 'error');
@@ -1144,7 +1152,8 @@
     if (missing.length) {
       messages.push(`請填寫用料記錄：${missing.join('、')}`);
     }
-    if (!data.incomplete && !data.complete && !data.oldCoil) {
+    const statusOk = data.complete || data.oldCoil || data.incomplete;
+    if (!statusOk) {
       messages.push('請勾選用料記錄嘅「完成」或「舊卷材」');
     }
     if (messages.length) {
@@ -1971,7 +1980,7 @@
   }
 
   function serializeMaterialRow(tr) {
-    const checkboxes = tr.querySelectorAll('td.chk input[type="checkbox"]');
+    const checks = getMaterialRowCheckboxes(tr);
     return {
       orderNo: getMaterialOrderNoValue(tr),
       thickness1: getThicknessValue(tr, 2),
@@ -1984,9 +1993,9 @@
       name: tr.querySelector('td:nth-child(9) input')?.value || '',
       length: tr.querySelector('td:nth-child(10) input')?.value || '',
       qty: tr.querySelector('td:nth-child(11) input')?.value || '',
-      complete: !!checkboxes[0]?.checked,
-      oldCoil: !!checkboxes[1]?.checked,
-      incomplete: checkboxes[2]?.checked ?? true,
+      complete: checks.complete,
+      oldCoil: checks.oldCoil,
+      incomplete: checks.incomplete,
       mainRowIndex: tr.dataset.mainRowIndex || '',
     };
   }
@@ -2032,12 +2041,14 @@
     tr.querySelector('td:nth-child(10) input').value = data.length || '';
     tr.querySelector('td:nth-child(11) input').value = data.qty || '';
 
-    const checkboxes = tr.querySelectorAll('td.chk input[type="checkbox"]');
-    if (checkboxes[0]) checkboxes[0].checked = !!data.complete;
-    if (checkboxes[1]) checkboxes[1].checked = !!data.oldCoil;
-    if (checkboxes[2]) {
-      checkboxes[2].checked = data.incomplete !== false;
-      checkboxes[2].classList.toggle('checkbox-red', checkboxes[2].checked);
+    const completeCb = tr.querySelector('td:nth-child(12) input[type="checkbox"]');
+    const oldCoilCb = tr.querySelector('td:nth-child(13) input[type="checkbox"]');
+    const incompleteCb = tr.querySelector('td:nth-child(14) input[type="checkbox"]');
+    if (completeCb) completeCb.checked = !!data.complete;
+    if (oldCoilCb) oldCoilCb.checked = !!data.oldCoil;
+    if (incompleteCb) {
+      incompleteCb.checked = data.incomplete !== false;
+      incompleteCb.classList.toggle('checkbox-red', incompleteCb.checked);
     }
     if (data.mainRowIndex !== undefined && data.mainRowIndex !== '') {
       tr.dataset.mainRowIndex = String(data.mainRowIndex);
