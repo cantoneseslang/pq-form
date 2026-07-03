@@ -695,6 +695,7 @@
     selectElement.dataset[datasetKey] = '1';
     if (confirmed) {
       appendCopiedMainRow(row);
+      appendMaterialRowFromMainRow(row);
     }
     persistLocal();
   }
@@ -1002,9 +1003,13 @@
   }
 
   function getMaterialRowSpecValues(row) {
+    const thicknessRaw = getThicknessValue(row, 5) || getThicknessValue(row, 2);
+    const widthRaw = row.querySelector('td:nth-child(6) input')?.value?.trim()
+      || row.querySelector('td:nth-child(3) input')?.value?.trim()
+      || '';
     return {
-      thickness: thicknessForProductLookup(getThicknessValue(row, 5)),
-      width: row.querySelector('td:nth-child(6) input')?.value?.trim() || '',
+      thickness: thicknessForProductLookup(thicknessRaw),
+      width: widthRaw,
       height: row.querySelector('td:nth-child(7) input')?.value?.trim() || '',
       length: row.querySelector('td:nth-child(10) input')?.value?.trim() || '',
     };
@@ -1200,13 +1205,33 @@
     const td = el.closest('td');
     if (!td || !row.contains(td)) return false;
     const idx = [...row.children].indexOf(td) + 1;
-    if (idx === 5 && el.matches('select.thickness-select')) return true;
-    return [6, 7, 10].includes(idx) && el.matches('input');
+    if ((idx === 2 || idx === 5) && el.matches('select.thickness-select')) return true;
+    return [3, 6, 7, 10].includes(idx) && el.matches('input');
+  }
+
+  function mainRowHasProductData(mainRow) {
+    const fields = getTopProductSyncFields(mainRow);
+    return !!(fields.code || fields.name || hasAllSpecValues({
+      thickness: fields.thickness,
+      width: fields.width,
+      height: fields.height,
+      length: fields.length,
+    }));
+  }
+
+  function syncMaterialRowFromMain(mainRow) {
+    if (!mainRow || !isMainDataRow(mainRow) || isMaterialRow(mainRow)) return;
+    if (!mainRowHasProductData(mainRow)) return;
+    appendMaterialRowFromMainRow(mainRow);
   }
 
   async function tryResolveProductForRow(row) {
     const pageRoot = getPageRoot(row);
     const type = getSelectedType(pageRoot);
+    const isMain = isMainDataRow(row) && !isMaterialRow(row);
+    const maybeSyncMaterial = () => {
+      if (isMain) syncMaterialRowFromMain(row);
+    };
     const { spec, codeInput, nameInput, pickerCol } = getProductResolveContext(row);
     const { thickness, width, height, length } = spec;
 
@@ -1256,6 +1281,7 @@
         codeInput.classList.remove('product-not-found');
         nameInput.classList.remove('product-not-found');
         hideProductResolveHint(row);
+        maybeSyncMaterial();
         persistLocal();
         adjustNameColumnWidth();
       } else if (data.matches.length > 1) {
@@ -1274,9 +1300,11 @@
           codeInput.classList.remove('product-not-found');
           nameInput.classList.remove('product-not-found');
           hideProductResolveHint(row);
+          maybeSyncMaterial();
           persistLocal();
           adjustNameColumnWidth();
         }, pickerCol);
+        if (uniqueNames.length === 1) maybeSyncMaterial();
       } else {
         const other = type === '其他'
           ? pageRoot.querySelector('#typeOther')?.value?.trim() || ''
@@ -1287,6 +1315,7 @@
           buildProvisionalProductName(type, spec, other),
         );
         if (data.hint) showProductResolveHint(row, data.hint);
+        maybeSyncMaterial();
         persistLocal();
         adjustNameColumnWidth();
       }
@@ -1494,6 +1523,7 @@
     const { thickness, width, height, code, name, length } = getTopProductSyncFields(topRow);
     const thicknessSelect1 = getThicknessSelect(materialRow, 2);
     const thicknessSelect2 = getThicknessSelect(materialRow, 5);
+    const widthInput1 = materialRow.querySelector('td:nth-child(3) input');
     const widthInput2 = materialRow.querySelector('td:nth-child(6) input');
     const heightInput = materialRow.querySelector('td:nth-child(7) input');
     const codeInput = materialRow.querySelector('td:nth-child(8) input');
@@ -1502,6 +1532,7 @@
 
     setThicknessSelectValue(thicknessSelect1, thickness);
     setThicknessSelectValue(thicknessSelect2, thickness);
+    if (widthInput1) widthInput1.value = width;
     if (widthInput2) widthInput2.value = width;
     if (heightInput) heightInput.value = height;
     if (codeInput) codeInput.value = code;
@@ -2944,6 +2975,10 @@
       if(!data.rows || data.rows.length === 0) {
         addRow(1);
       }
+
+      [...tableBody.querySelectorAll('tr')].filter(isMainDataRow).forEach((tr) => {
+        syncMaterialRowFromMain(tr);
+      });
       
     }catch(e){ 
       addRow(1);
