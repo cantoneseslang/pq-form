@@ -7,7 +7,7 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
-  <div class="container">
+  <div id="moldingPage" class="container">
     <header class="header-flex">
       <img src="logo.png" alt="KIRII" class="logo-left" />
       <div>
@@ -48,6 +48,7 @@
           <label><input type="checkbox" name="machine" value="5號滾筒成形機" />5號滾筒成形機</label>
         </div>
       </div>
+      <div class="machine-select-hint product-hint-outside product-hint-outside--error" hidden></div>
 
       <div class="toolbar-row">
         <div class="toolbar-group">
@@ -60,11 +61,9 @@
           <span class="suffix">日</span>
         </div>
         <div class="toolbar-actions">
-          <button id="addRowBtn" class="btn" type="button">新增列</button>
+          <button id="addRowBtn" class="btn btn-secondary" type="button">新增列</button>
           <button id="removeRowBtn" class="btn btn-secondary" type="button">刪除末列</button>
           <button id="clearBtn" class="btn btn-secondary" type="button">清空全部</button>
-          <button id="saveLocalBtn" class="btn" type="button">暫存（本機）</button>
-          <button id="loadByDateBtn" class="btn btn-primary" type="button">由日期載入</button>
         </div>
       </div>
     </div>
@@ -87,9 +86,8 @@
           <col style="width:44px">   <!-- P 扭曲 -->
           <col style="width:81px">   <!-- Q 轉機員/檢查員 -->
           <col style="width:70px">  <!-- R 完成時間 -->
-          <col style="width:80px">  <!-- S 備註 -->
+          <col style="width:80px">  <!-- S 速度 -->
           <col style="width:60px">  <!-- T 其他 -->
-          <col style="width:160px">  <!-- 操作 -->
         </colgroup>
         <thead>
           <tr>
@@ -110,7 +108,6 @@
             <th class="w-70">完成時間</th>  <!-- R -->
             <th class="w-80">速度</th>      <!-- S -->
             <th class="w-60">其他</th>      <!-- T -->
-            <th class="w-160">操作</th>
           </tr>
         </thead>
         <tbody id="tableBody"></tbody>
@@ -118,18 +115,19 @@
     </div>
 
     <!-- 用料記録セクション -->
-    <div class="table-wrap" style="margin-top: 16px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 12px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px;">
-        <h2 style="margin: 0;">用料記録</h2>
+    <div class="material-section-wrap">
+      <div class="material-section-header">
+        <h2>用料記録</h2>
         <div class="toolbar-actions">
-          <button id="addMaterialRowBtn" class="btn" type="button">新增用料列</button>
+          <button id="addMaterialRowBtn" class="btn btn-secondary" type="button">新增用料列</button>
           <button id="removeMaterialRowBtn" class="btn btn-secondary" type="button">刪除末用料列</button>
           <button id="clearMaterialBtn" class="btn btn-secondary" type="button">清空用料全部</button>
         </div>
       </div>
+      <div class="table-wrap">
       <table>
         <colgroup>
-          <col style="width:150px">  <!-- 單號 -->
+          <col style="width:190px">  <!-- 類型+單號 -->
           <col style="width:58px">   <!-- 材料厚度 -->
           <col style="width:58px">   <!-- 闊度 -->
           <col style="width:58px">   <!-- 卷材重量 -->
@@ -167,11 +165,22 @@
         <tbody id="materialTableBody"></tbody>
       </table>
     </div>
+    </div>
 
     <!-- 生產紀錄 -->
     <div class="table-wrap production-record-wrap" style="margin-top: 16px;">
       <div class="production-record-header">
-        <h2>生產紀錄</h2>
+        <div class="production-record-header__left">
+          <h2>生產紀錄</h2>
+          <span class="production-record-filter-caption">月份</span>
+          <select class="production-record-month-filter" aria-label="月份篩選">
+            <option value="">全部月份</option>
+          </select>
+          <span class="production-record-filter-caption">產品種類</span>
+          <select class="production-record-type-filter" aria-label="產品種類篩選">
+            <option value="">全部種類</option>
+          </select>
+        </div>
         <div class="production-record-meta">
           <span id="productionRecordCount" class="production-record-count">0 筆</span>
           <button id="refreshProductionRecordsBtn" class="btn btn-secondary" type="button">重新載入</button>
@@ -179,40 +188,42 @@
       </div>
       <table class="production-record-table">
         <colgroup>
-          <col style="width:100px">
+          <col style="width:90px">
+          <col style="width:128px">
           <col style="width:140px">
           <col style="width:200px">
-          <col style="width:50px">
-          <col style="width:50px">
-          <col style="width:50px">
-          <col style="width:50px">
-          <col style="width:70px">
-          <col style="width:60px">
-          <col style="width:60px">
-          <col style="width:60px">
-          <col style="width:120px">
-          <col style="width:50px">
+          <col style="width:58px">
+          <col style="width:44px">
+          <col style="width:44px">
+          <col style="width:52px">
           <col style="width:80px">
+          <col style="width:52px">
+          <col style="width:52px">
+          <col style="width:52px">
+          <col style="width:120px">
+          <col style="width:52px">
+          <col style="width:130px">
         </colgroup>
         <thead>
           <tr>
             <th>期日</th>
+            <th>送出時間</th>
             <th>產品編號</th>
             <th>產品名稱</th>
-            <th class="th-stacked">材<br>料<br>厚<br>度</th>
-            <th class="th-stacked">闊<br>度</th>
-            <th class="th-stacked">高<br>度</th>
-            <th class="th-stacked">長<br>度</th>
+            <th>材料厚度</th>
+            <th>闊度</th>
+            <th>高度</th>
+            <th>長度</th>
             <th>轉機員/檢查員</th>
-            <th class="th-stacked">上<br>料</th>
-            <th class="th-stacked">開<br>始</th>
-            <th class="th-stacked">完<br>成</th>
-            <th>用料-產品編號</th>
-            <th class="th-stacked">數<br>量</th>
+            <th>上料</th>
+            <th>開始</th>
+            <th>完成</th>
+            <th>單號</th>
+            <th>數量</th>
             <th>操作</th>
           </tr>
         </thead>
-        <tbody id="productionRecordBody" data-page="molding"></tbody>
+        <tbody id="productionRecordBody" data-page="shared"></tbody>
       </table>
     </div>
 
@@ -252,6 +263,7 @@
           <label><input type="checkbox" name="machine" value="5號自動啤機" />5號自動啤機</label>
         </div>
       </div>
+      <div class="machine-select-hint product-hint-outside product-hint-outside--error" hidden></div>
 
       <div class="toolbar-row">
         <div class="toolbar-group">
@@ -264,11 +276,9 @@
           <span class="suffix">日</span>
         </div>
         <div class="toolbar-actions">
-          <button id="addRowBtn2" class="btn" type="button">新增列</button>
+          <button id="addRowBtn2" class="btn btn-secondary" type="button">新增列</button>
           <button id="removeRowBtn2" class="btn btn-secondary" type="button">刪除末列</button>
           <button id="clearBtn2" class="btn btn-secondary" type="button">清空全部</button>
-          <button id="saveLocalBtn2" class="btn" type="button">暫存（本機）</button>
-          <button id="loadByDateBtn2" class="btn btn-primary" type="button">由日期載入</button>
         </div>
       </div>
     </div>
@@ -291,9 +301,8 @@
           <col style="width:44px">   <!-- P 扭曲 -->
           <col style="width:81px">   <!-- Q 轉機員/檢查員 -->
           <col style="width:70px">  <!-- R 完成時間 -->
-          <col style="width:80px">  <!-- S 備註 -->
+          <col style="width:80px">  <!-- S 速度 -->
           <col style="width:60px">  <!-- T 其他 -->
-          <col style="width:160px">  <!-- 操作 -->
         </colgroup>
         <thead>
           <tr>
@@ -314,7 +323,6 @@
             <th class="w-70">完成時間</th>  <!-- R -->
             <th class="w-80">速度</th>      <!-- S -->
             <th class="w-60">其他</th>      <!-- T -->
-            <th class="w-160">操作</th>
           </tr>
         </thead>
         <tbody id="tableBody2"></tbody>
@@ -322,18 +330,19 @@
     </div>
 
     <!-- 用料記録セクション -->
-    <div class="table-wrap" style="margin-top: 16px;">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding: 12px 16px; background: var(--panel); border: 1px solid var(--border); border-radius: 8px;">
-        <h2 style="margin: 0;">用料記録</h2>
+    <div class="material-section-wrap">
+      <div class="material-section-header">
+        <h2>用料記録</h2>
         <div class="toolbar-actions">
-          <button id="addMaterialRowBtn2" class="btn" type="button">新增用料列</button>
+          <button id="addMaterialRowBtn2" class="btn btn-secondary" type="button">新增用料列</button>
           <button id="removeMaterialRowBtn2" class="btn btn-secondary" type="button">刪除末用料列</button>
           <button id="clearMaterialBtn2" class="btn btn-secondary" type="button">清空用料全部</button>
         </div>
       </div>
+      <div class="table-wrap">
       <table>
         <colgroup>
-          <col style="width:150px">  <!-- 單號 -->
+          <col style="width:190px">  <!-- 類型+單號 -->
           <col style="width:58px">   <!-- 材料厚度 -->
           <col style="width:58px">   <!-- 闊度 -->
           <col style="width:58px">   <!-- 卷材重量 -->
@@ -371,11 +380,22 @@
         <tbody id="materialTableBody2"></tbody>
       </table>
     </div>
+    </div>
 
     <!-- 生產紀錄 -->
     <div class="table-wrap production-record-wrap" style="margin-top: 16px;">
       <div class="production-record-header">
-        <h2>生產紀錄</h2>
+        <div class="production-record-header__left">
+          <h2>生產紀錄</h2>
+          <span class="production-record-filter-caption">月份</span>
+          <select class="production-record-month-filter" aria-label="月份篩選">
+            <option value="">全部月份</option>
+          </select>
+          <span class="production-record-filter-caption">產品種類</span>
+          <select class="production-record-type-filter" aria-label="產品種類篩選">
+            <option value="">全部種類</option>
+          </select>
+        </div>
         <div class="production-record-meta">
           <span id="productionRecordCount2" class="production-record-count">0 筆</span>
           <button id="refreshProductionRecordsBtn2" class="btn btn-secondary" type="button">重新載入</button>
@@ -383,46 +403,111 @@
       </div>
       <table class="production-record-table">
         <colgroup>
-          <col style="width:100px">
+          <col style="width:90px">
+          <col style="width:128px">
           <col style="width:140px">
           <col style="width:200px">
-          <col style="width:50px">
-          <col style="width:50px">
-          <col style="width:50px">
-          <col style="width:50px">
-          <col style="width:70px">
-          <col style="width:60px">
-          <col style="width:60px">
-          <col style="width:60px">
-          <col style="width:120px">
-          <col style="width:50px">
+          <col style="width:58px">
+          <col style="width:44px">
+          <col style="width:44px">
+          <col style="width:52px">
           <col style="width:80px">
+          <col style="width:52px">
+          <col style="width:52px">
+          <col style="width:52px">
+          <col style="width:120px">
+          <col style="width:52px">
+          <col style="width:130px">
         </colgroup>
         <thead>
           <tr>
             <th>期日</th>
+            <th>送出時間</th>
             <th>產品編號</th>
             <th>產品名稱</th>
-            <th class="th-stacked">材<br>料<br>厚<br>度</th>
-            <th class="th-stacked">闊<br>度</th>
-            <th class="th-stacked">高<br>度</th>
-            <th class="th-stacked">長<br>度</th>
+            <th>材料厚度</th>
+            <th>闊度</th>
+            <th>高度</th>
+            <th>長度</th>
             <th>轉機員/檢查員</th>
-            <th class="th-stacked">上<br>料</th>
-            <th class="th-stacked">開<br>始</th>
-            <th class="th-stacked">完<br>成</th>
-            <th>用料-產品編號</th>
-            <th class="th-stacked">數<br>量</th>
+            <th>上料</th>
+            <th>開始</th>
+            <th>完成</th>
+            <th>單號</th>
+            <th>數量</th>
             <th>操作</th>
           </tr>
         </thead>
-        <tbody id="productionRecordBody2" data-page="auto"></tbody>
+        <tbody id="productionRecordBody2" data-page="shared"></tbody>
       </table>
     </div>
 
     <footer>
       Copyright © Kirii (Hong Kong) Limited. All Rights Reserved.
     </footer>
+  </div>
+
+  <div id="machineResetModal" class="production-record-modal" hidden>
+    <div class="production-record-modal__panel" role="dialog" aria-labelledby="machineResetModalTitle">
+      <div class="production-record-modal__header">
+        <h3 id="machineResetModalTitle">確認重置表單</h3>
+      </div>
+      <div class="production-record-modal__body">
+        <p id="machineResetModalMessage">你轉揀另一部生產機械。係咪要重置成個表單（同「清空全部」一樣）？</p>
+        <div class="production-record-modal__actions">
+          <button type="button" id="machineResetConfirmBtn" class="btn btn-primary">重置表單</button>
+          <button type="button" id="machineResetCancelBtn" class="btn btn-secondary">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="transferRowModal" class="production-record-modal" hidden>
+    <div class="production-record-modal__panel" role="dialog" aria-labelledby="transferRowModalTitle">
+      <div class="production-record-modal__header">
+        <h3 id="transferRowModalTitle">確認新增列</h3>
+      </div>
+      <div class="production-record-modal__body">
+        <p id="transferRowModalMessage">你揀咗「轉機」。係咪要自動加一行，並複製呢行嘅產品編號、材料厚度、闊度、高度、產品名稱同長度？</p>
+        <div class="production-record-modal__actions">
+          <button type="button" id="transferRowConfirmBtn" class="btn btn-primary">新增列</button>
+          <button type="button" id="transferRowCancelBtn" class="btn btn-secondary">唔加列</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="deleteRecordModal" class="production-record-modal" hidden>
+    <div class="production-record-modal__panel" role="dialog" aria-labelledby="deleteRecordModalTitle">
+      <div class="production-record-modal__header">
+        <h3 id="deleteRecordModalTitle">確認刪除</h3>
+      </div>
+      <div class="production-record-modal__body">
+        <p id="deleteRecordModalMessage">係咪真係要刪除呢筆生產紀錄？刪除後畫面上唔再顯示，但資料會保留喺資料庫，日後可以恢復。</p>
+        <div id="deleteRecordModalSummary" class="duplicate-record-summary"></div>
+        <div class="production-record-modal__actions">
+          <button type="button" id="deleteRecordConfirmBtn" class="btn btn-primary">確認刪除</button>
+          <button type="button" id="deleteRecordCancelBtn" class="btn btn-secondary">取消</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="duplicateRecordModal" class="production-record-modal" hidden>
+    <div class="production-record-modal__panel" role="dialog" aria-labelledby="duplicateRecordModalTitle">
+      <div class="production-record-modal__header">
+        <h3 id="duplicateRecordModalTitle">發現重複紀錄</h3>
+      </div>
+      <div class="production-record-modal__body">
+        <p id="duplicateRecordModalMessage">同日期、同產品、同規格、同用料同數量嘅紀錄已經存在。你想點做？</p>
+        <div id="duplicateRecordModalSummary" class="duplicate-record-summary"></div>
+        <div class="production-record-modal__actions">
+          <button type="button" id="duplicateRecordOverwriteBtn" class="btn btn-primary">覆蓋舊紀錄</button>
+          <button type="button" id="duplicateRecordNewBtn" class="btn btn-secondary">另起新紀錄送出</button>
+          <button type="button" id="duplicateRecordCancelBtn" class="btn btn-secondary">取消</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <div id="productionRecordModal" class="production-record-modal" hidden>
@@ -435,7 +520,7 @@
         <input type="hidden" id="editRecordId" />
         <fieldset class="production-record-fieldset">
           <legend>上段（品質檢定）</legend>
-          <div class="production-record-form-grid">
+          <div class="production-record-form-grid production-record-form-grid--main-top">
             <label>上料時間<input type="text" id="editMainLoad" /></label>
             <label>開始時間<input type="text" id="editMainStart" /></label>
             <label>完成時間<input type="text" id="editMainFinish" /></label>
@@ -444,8 +529,10 @@
             <label>闊度<input type="text" id="editMainWidth" /></label>
             <label>高度<input type="text" id="editMainHeight" /></label>
             <label>長度<input type="text" id="editMainLength" /></label>
-            <label>產品名稱<input type="text" id="editMainName" /></label>
-            <label>轉機員/檢查員
+          </div>
+          <div class="production-record-form-grid production-record-form-grid--main-bottom">
+            <label class="production-record-field-wide">產品名稱<input type="text" id="editMainName" /></label>
+            <label class="production-record-field-narrow">轉機員/檢查員
               <select id="editMainOperator">
                 <option value=""></option>
                 <option value="達">達</option>
@@ -453,13 +540,13 @@
                 <option value="嫻">嫻</option>
               </select>
             </label>
-            <label>速度<input type="text" id="editMainSpeed" /></label>
-            <label>其他<input type="text" id="editMainOther" /></label>
+            <label class="production-record-field-narrow">速度<input type="text" id="editMainSpeed" /></label>
+            <label class="production-record-field-narrow">其他<input type="text" id="editMainOther" /></label>
           </div>
         </fieldset>
         <fieldset class="production-record-fieldset">
           <legend>用料記録</legend>
-          <div class="production-record-form-grid">
+          <div class="production-record-form-grid production-record-form-grid--mat-top">
             <label>單號<input type="text" id="editMatOrderNo" /></label>
             <label>材料厚度<input type="text" id="editMatThickness1" /></label>
             <label>闊度<input type="text" id="editMatWidth1" /></label>
@@ -468,7 +555,9 @@
             <label>闊度2<input type="text" id="editMatWidth2" /></label>
             <label>高度<input type="text" id="editMatHeight" /></label>
             <label>產品編號<input type="text" id="editMatProductNo" /></label>
-            <label>產品名稱<input type="text" id="editMatName" /></label>
+          </div>
+          <div class="production-record-form-grid production-record-form-grid--mat-bottom">
+            <label class="production-record-field-wide">產品名稱<input type="text" id="editMatName" /></label>
             <label>長度<input type="text" id="editMatLength" /></label>
             <label>數量<input type="text" id="editMatQty" /></label>
           </div>
@@ -485,7 +574,7 @@
     </div>
   </div>
 
-    <script src="app.js?v=20260314-1"></script>
+    <script src="app.js?v=20260703-20"></script>
   <noscript>請啟用JavaScript</noscript>
   <script>
     // 初始化時、工具列のチェック状態や列幅調整は app.js が担当

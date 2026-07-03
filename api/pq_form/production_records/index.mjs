@@ -41,6 +41,7 @@ export default async function handler(req, res) {
       let query = supabase
         .from('pq_production_records')
         .select('*')
+        .is('deleted_at', null)
         .order('created_at', { ascending: false });
 
       if (date) query = query.eq('record_date', date);

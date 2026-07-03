@@ -31,7 +31,7 @@ export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
   res.setHeader('Access-Control-Allow-Origin', '*');
 
-  if (req.method !== 'PATCH') {
+  if (req.method !== 'PATCH' && req.method !== 'DELETE') {
     return res.status(405).json({ success: false, error: 'Method not allowed' });
   }
 
@@ -45,6 +45,34 @@ export default async function handler(req, res) {
   }
 
   try {
+    const supabase = getSupabaseAdmin();
+    const { data: existing, error: fetchError } = await supabase
+      .from('pq_production_records')
+      .select('*')
+      .eq('id', id)
+      .single();
+
+    if (fetchError) throw fetchError;
+    if (existing.deleted_at) {
+      return res.status(410).json({ success: false, error: 'Record already deleted' });
+    }
+
+    if (req.method === 'DELETE') {
+      const now = new Date().toISOString();
+      const { data, error } = await supabase
+        .from('pq_production_records')
+        .update({
+          deleted_at: now,
+          updated_at: now,
+        })
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+      return res.status(200).json({ success: true, record: dbRowToClient(data) });
+    }
+
     const body = await parseJsonBody(req);
     const { main, material, correction_note: correctionNote } = body;
 
@@ -54,15 +82,6 @@ export default async function handler(req, res) {
     if (!String(correctionNote || '').trim()) {
       return res.status(400).json({ success: false, error: 'correction_note is required' });
     }
-
-    const supabase = getSupabaseAdmin();
-    const { data: existing, error: fetchError } = await supabase
-      .from('pq_production_records')
-      .select('*')
-      .eq('id', id)
-      .single();
-
-    if (fetchError) throw fetchError;
 
     const now = new Date().toISOString();
     const { data, error } = await supabase

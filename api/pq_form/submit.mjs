@@ -34,18 +34,28 @@ export default async function handler(req, res) {
     }
 
     const { sheetName } = getSheetsClient();
-    const blockRange = dataBlockRange(sheetName);
-    const block = await readRange(blockRange);
-    const targetRow = findFirstEmptyRowInBlock(block);
-    if (!targetRow) {
-      res.setHeader('Cache-Control', 'no-store');
-      return res.status(409).json({ success: false, error: `表の範囲(${DATA_START_ROW}-${DATA_END_ROW})が満杯です` });
-    }
+    const requestedRow = parseInt(body?.targetRow, 10);
+    let targetRow = Number.isFinite(requestedRow) ? requestedRow : null;
 
-    if (targetRow > STYLED_TEMPLATE_END_ROW) {
-      await copyRowTemplate(sheetName, targetRow, DATA_START_ROW);
+    if (targetRow) {
+      if (targetRow < DATA_START_ROW || targetRow > DATA_END_ROW) {
+        res.setHeader('Cache-Control', 'no-store');
+        return res.status(400).json({ success: false, error: `targetRow must be between ${DATA_START_ROW} and ${DATA_END_ROW}` });
+      }
+    } else {
+      const blockRange = dataBlockRange(sheetName);
+      const block = await readRange(blockRange);
+      targetRow = findFirstEmptyRowInBlock(block);
+      if (!targetRow) {
+        res.setHeader('Cache-Control', 'no-store');
+        return res.status(409).json({ success: false, error: `表の範囲(${DATA_START_ROW}-${DATA_END_ROW})が満杯です` });
+      }
+
+      if (targetRow > STYLED_TEMPLATE_END_ROW) {
+        await copyRowTemplate(sheetName, targetRow, DATA_START_ROW);
+      }
+      await applyDataRowLayout(sheetName, targetRow);
     }
-    await applyDataRowLayout(sheetName, targetRow);
 
     const values = normalizeRowValues(rows[0]);
     const writeRange = `${sheetName}!A${targetRow}:T${targetRow}`;
