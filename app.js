@@ -2076,6 +2076,8 @@
   let productionRecordsCache = [];
   let productionRecordFilterMonth = '';
   let productionRecordFilterType = '';
+  let editingProductionRecord = null;
+  let formStateBeforeEdit = null;
 
   function getFormDateString(inAutoPage) {
     const y = document.getElementById(inAutoPage ? 'year2' : 'year')?.value || '';
@@ -2292,6 +2294,254 @@
     if (!sheetRows.length && record?.sheetRow) sheetRows = [record.sheetRow];
     while (sheetRows.length < mainLines.length) sheetRows.push(null);
     return { mainLines, materialLines, sheetRows };
+  }
+
+  function isAutoPageVisible() {
+    const autoPageEl = document.getElementById('autoPage');
+    return autoPageEl && autoPageEl.style.display !== 'none';
+  }
+
+  function parseRecordDateParts(recordDate) {
+    const m = String(recordDate || '').match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})/);
+    if (!m) return null;
+    return {
+      y: m[1],
+      m: String(parseInt(m[2], 10)),
+      d: String(parseInt(m[3], 10)),
+    };
+  }
+
+  function applyChecksToPage(inAutoPage, productTypes = {}, machines = {}) {
+    const typeSelector = inAutoPage ? '#autoPage input[name="type"]' : '#moldingPage input[name="type"]';
+    const machineSelector = inAutoPage ? '#autoPage input[name="machine"]' : '#moldingPage input[name="machine"]';
+    document.querySelectorAll(typeSelector).forEach((el) => {
+      el.checked = !!productTypes[el.value];
+    });
+    const otherInput = inAutoPage ? null : document.getElementById('typeOther');
+    if (otherInput && productTypes['其他入力']) {
+      otherInput.value = productTypes['其他入力'];
+    }
+    document.querySelectorAll(machineSelector).forEach((el) => {
+      el.checked = !!machines[el.value];
+    });
+  }
+
+  function setFormDateParts(inAutoPage, dateParts) {
+    if (!dateParts) return;
+    const yEl = document.getElementById(inAutoPage ? 'year2' : 'year');
+    const mEl = document.getElementById(inAutoPage ? 'month2' : 'month');
+    const dEl = document.getElementById(inAutoPage ? 'day2' : 'day');
+    if (yEl) yEl.value = dateParts.y || '';
+    if (mEl) mEl.value = dateParts.m || '';
+    if (dEl) dEl.value = dateParts.d || '';
+  }
+
+  function snapshotCurrentFormState() {
+    const inAutoPage = isAutoPageVisible();
+    const dateParts = parseRecordDateParts(getFormDateString(inAutoPage)) || {};
+    return {
+      inAutoPage,
+      dateParts,
+      mainRows: collectMainLinesFromForm(inAutoPage),
+      materialRows: collectAllMaterialLinesFromForm(inAutoPage),
+      productTypes: collectChecks(inAutoPage ? '#autoPage input[name="type"]' : '#moldingPage input[name="type"]'),
+      machines: collectChecks(inAutoPage ? '#autoPage input[name="machine"]' : '#moldingPage input[name="machine"]'),
+    };
+  }
+
+  function restoreFormSnapshot(state) {
+    if (!state) return;
+    if (state.inAutoPage) switchToAuto();
+    else switchToMolding();
+
+    setFormDateParts(state.inAutoPage, state.dateParts);
+    applyChecksToPage(state.inAutoPage, state.productTypes, state.machines);
+
+    const mainBody = state.inAutoPage ? tableBody2 : tableBody;
+    const materialBody = state.inAutoPage ? materialTableBody2 : materialTableBody;
+    if (mainBody) {
+      mainBody.innerHTML = '';
+      if (state.mainRows?.length) {
+        state.mainRows.forEach((rowData) => {
+          const tr = createRow();
+          deserializeMainRow(tr, rowData);
+          mainBody.appendChild(tr);
+        });
+      } else {
+        addRow(1, mainBody);
+      }
+    }
+    if (materialBody) {
+      materialBody.innerHTML = '';
+      (state.materialRows || []).forEach((rowData) => {
+        const tr = createMaterialRow();
+        deserializeMaterialRow(tr, rowData);
+        materialBody.appendChild(tr);
+      });
+    }
+    if (!state.inAutoPage) persistLocal();
+    adjustNameColumnWidth();
+  }
+
+  function populateFormFromProductionRecord(record) {
+    const inAutoPage = record.pageType === 'auto';
+    if (inAutoPage) switchToAuto();
+    else switchToMolding();
+
+    setFormDateParts(inAutoPage, parseRecordDateParts(record.recordDate));
+    applyChecksToPage(inAutoPage, record.productTypes || {}, record.machines || {});
+
+    const mainBody = inAutoPage ? tableBody2 : tableBody;
+    const materialBody = inAutoPage ? materialTableBody2 : materialTableBody;
+    const { mainLines, materialLines } = normalizeProductionRecordLines(record);
+
+    if (mainBody) {
+      mainBody.innerHTML = '';
+      if (mainLines.length) {
+        mainLines.forEach((lineData) => {
+          const tr = createRow();
+          deserializeMainRow(tr, lineData);
+          mainBody.appendChild(tr);
+        });
+      } else {
+        addRow(1, mainBody);
+      }
+    }
+
+    if (materialBody) {
+      materialBody.innerHTML = '';
+      materialLines.forEach((lineData) => {
+        const tr = createMaterialRow();
+        deserializeMaterialRow(tr, lineData);
+        materialBody.appendChild(tr);
+      });
+    }
+
+    if (!inAutoPage) persistLocal();
+    adjustNameColumnWidth();
+  }
+
+  function showProductionRecordEditBar(record) {
+    const bar = document.getElementById('productionRecordEditBar');
+    const title = document.getElementById('productionRecordEditBarTitle');
+    const note = document.getElementById('formCorrectionNote');
+    const err = document.getElementById('productionRecordEditBarError');
+    const displayMain = getProductionRecordDisplayMain(record);
+    const productNo = normalizeProductCodeForSubmit(displayMain.productNo);
+    if (title) {
+      title.textContent = `正在修正：${record.recordDate || ''} ${productNo} ${displayMain.name || ''}`.trim();
+    }
+    if (note) note.value = '';
+    if (err) err.hidden = true;
+    if (bar) bar.hidden = false;
+    bar?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function hideProductionRecordEditBar() {
+    const bar = document.getElementById('productionRecordEditBar');
+    if (bar) bar.hidden = true;
+    const err = document.getElementById('productionRecordEditBarError');
+    if (err) err.hidden = true;
+  }
+
+  function cancelProductionRecordFormEdit() {
+    restoreFormSnapshot(formStateBeforeEdit);
+    editingProductionRecord = null;
+    formStateBeforeEdit = null;
+    hideProductionRecordEditBar();
+  }
+
+  function openProductionRecordForFormEdit(recordId) {
+    const record = productionRecordsCache.find((r) => r.id === recordId);
+    if (!record || record.deletedAt) return;
+    if (editingProductionRecord && editingProductionRecord.id !== recordId) {
+      cancelProductionRecordFormEdit();
+    }
+    formStateBeforeEdit = snapshotCurrentFormState();
+    editingProductionRecord = record;
+    populateFormFromProductionRecord(record);
+    showProductionRecordEditBar(record);
+    const pageRoot = record.pageType === 'auto'
+      ? document.getElementById('autoPage')
+      : getMoldingPageRoot();
+    pageRoot?.querySelector('.toolbar')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  async function saveProductionRecordEditFromForm() {
+    if (!editingProductionRecord) return;
+    const errEl = document.getElementById('productionRecordEditBarError');
+    const correctionNote = document.getElementById('formCorrectionNote')?.value.trim() || '';
+    if (!correctionNote) {
+      if (errEl) {
+        errEl.textContent = '請填寫修正理由';
+        errEl.hidden = false;
+      }
+      return;
+    }
+
+    const inAutoPage = editingProductionRecord.pageType === 'auto';
+    const mainLines = collectMainLinesFromForm(inAutoPage);
+    const materialLines = collectAllMaterialLinesFromForm(inAutoPage);
+    const { sheetRows } = normalizeProductionRecordLines(editingProductionRecord);
+    const main = summarizeMainForProductionRecord(mainLines) || mainLines[0] || editingProductionRecord.main || {};
+    const material = summarizeMaterialForProductionRecord(materialLines) || materialLines[0] || editingProductionRecord.material || {};
+    const recordDate = getFormDateString(inAutoPage);
+    const recordId = editingProductionRecord.id;
+
+    try {
+      const res = await fetch(`${API_BASE}/api/pq_form/production_records/${encodeURIComponent(recordId)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({
+          main,
+          material,
+          mainLines,
+          materialLines,
+          sheetRows,
+          recordDate,
+          correction_note: correctionNote,
+        }),
+      });
+      const data = await res.json();
+      if (res.status === 503) {
+        upsertProductionRecord({
+          ...editingProductionRecord,
+          recordDate: recordDate || editingProductionRecord.recordDate,
+          main,
+          material,
+          mainLines,
+          materialLines,
+          sheetRows,
+          correctionNote,
+          correctedAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        });
+        editingProductionRecord = null;
+        formStateBeforeEdit = null;
+        hideProductionRecordEditBar();
+        showProductionRecordMessage('已修正（本機紀錄）', 'success');
+        return;
+      }
+      if (!data.success) {
+        if (errEl) {
+          errEl.textContent = data.error || '保存失敗';
+          errEl.hidden = false;
+        }
+        return;
+      }
+      upsertProductionRecord(data.record);
+      editingProductionRecord = null;
+      formStateBeforeEdit = null;
+      hideProductionRecordEditBar();
+      const dailyNote = formatDailyReportSyncNote(data.dailyReport);
+      showProductionRecordMessage(`已修正${dailyNote}`, dailyNote.includes('失敗') ? 'error' : 'success');
+    } catch (err) {
+      if (errEl) {
+        errEl.textContent = '保存失敗';
+        errEl.hidden = false;
+      }
+    }
   }
 
   function buildEditOperatorSelectHtml(value) {
@@ -2928,6 +3178,8 @@
   function bindProductionRecordEvents() {
     document.getElementById('refreshProductionRecordsBtn')?.addEventListener('click', refreshProductionRecords);
     document.getElementById('refreshProductionRecordsBtn2')?.addEventListener('click', refreshProductionRecords);
+    document.getElementById('productionRecordEditSaveBtn')?.addEventListener('click', saveProductionRecordEditFromForm);
+    document.getElementById('productionRecordEditCancelBtn')?.addEventListener('click', cancelProductionRecordFormEdit);
     document.addEventListener('change', (e) => {
       if (e.target.matches('.production-record-month-filter')) {
         productionRecordFilterMonth = e.target.value;
@@ -2943,12 +3195,11 @@
     });
     document.getElementById('productionRecordModalClose')?.addEventListener('click', closeProductionRecordModal);
     document.getElementById('productionRecordModalCancel')?.addEventListener('click', closeProductionRecordModal);
-    productionRecordEditForm?.addEventListener('submit', handleProductionRecordEditSubmit);
     document.addEventListener('click', (e) => {
       const editBtn = e.target.closest('.btn-edit-production-record');
       if (editBtn) {
         const id = editBtn.closest('tr')?.dataset.recordId;
-        if (id) openProductionRecordModal(id);
+        if (id) openProductionRecordForFormEdit(id);
         return;
       }
       const deleteBtn = e.target.closest('.btn-delete-production-record');
@@ -3507,6 +3758,10 @@
       }
 
       (async () => {
+        if (editingProductionRecord) {
+          showOutsideMessage(tr, '正在修正模式，請用上方「保存修正」或「取消修正」', 'error');
+          return;
+        }
         if (!validateMachineBeforeSend(inAutoPage)) return;
         if (!validateRowBeforeSend(mainTr)) return;
         if (!validateMaterialRowBeforeSend(materialTr, materialTr || mainTr, mainTr, inAutoPage)) return;

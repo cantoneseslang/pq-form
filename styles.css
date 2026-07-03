@@ -483,6 +483,23 @@ footer{text-align:center;color:#6c757d;margin:18px 0;padding:12px 0;margin-top:a
 .btn-delete-production-record{color:#fff;background:#c0392b;border-color:#c0392b}
 .btn-delete-production-record:hover{background:#a93226;border-color:#a93226;color:#fff}
 
+.production-record-edit-bar{
+  position:sticky;top:0;z-index:200;background:#fff8e1;border-bottom:2px solid #f39c12;
+  box-shadow:0 2px 8px rgba(0,0,0,.08);
+}
+.production-record-edit-bar__inner{
+  max-width:1200px;margin:0 auto;padding:10px 16px;display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;
+}
+.production-record-edit-bar__title{font-size:14px;color:#d35400;white-space:nowrap}
+.production-record-edit-bar__note{
+  flex:1 1 220px;display:flex;align-items:center;gap:8px;font-size:12px;font-weight:600;color:var(--muted);margin:0;
+}
+.production-record-edit-bar__note textarea{
+  flex:1;min-width:160px;padding:6px 8px;border:1px solid var(--border);border-radius:6px;font-size:14px;resize:vertical;
+}
+.production-record-edit-bar__actions{display:flex;gap:8px;flex-wrap:wrap}
+.production-record-edit-bar__error{width:100%;margin:0;color:#c0392b;font-size:13px}
+
 .order-no-cell{padding:2px 4px;vertical-align:middle}
 .order-no-editor{display:flex;align-items:center;gap:4px}
 .order-no-prefix{width:44px;min-width:44px;padding:4px 2px;font-size:13px}

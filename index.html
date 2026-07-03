@@ -7,6 +7,20 @@
   <link rel="stylesheet" href="styles.css" />
 </head>
 <body>
+  <div id="productionRecordEditBar" class="production-record-edit-bar" hidden>
+    <div class="production-record-edit-bar__inner">
+      <strong id="productionRecordEditBarTitle" class="production-record-edit-bar__title">正在修正生產紀錄</strong>
+      <label class="production-record-edit-bar__note">修正理由（必填）
+        <textarea id="formCorrectionNote" rows="1" placeholder="請說明修正原因"></textarea>
+      </label>
+      <div class="production-record-edit-bar__actions">
+        <button type="button" id="productionRecordEditSaveBtn" class="btn btn-primary">保存修正</button>
+        <button type="button" id="productionRecordEditCancelBtn" class="btn btn-secondary">取消修正</button>
+      </div>
+      <p id="productionRecordEditBarError" class="production-record-edit-bar__error" hidden></p>
+    </div>
+  </div>
+
   <div id="moldingPage" class="container">
     <header class="header-flex">
       <img src="logo.png" alt="KIRII" class="logo-left" />
@@ -534,7 +548,7 @@
     </div>
   </div>
 
-    <script src="app.js?v=20260703-48"></script>
+    <script src="app.js?v=20260703-49"></script>
   <noscript>請啟用JavaScript</noscript>
   <script>
     // 初始化時、工具列のチェック状態や列幅調整は app.js が担当
