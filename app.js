@@ -993,9 +993,38 @@
     refreshProductNotFoundUI(targetCodeInput, targetNameInput);
   }
 
+  function getMaterialRowSpecValues(row) {
+    return {
+      thickness: getThicknessValue(row, 5),
+      width: row.querySelector('td:nth-child(6) input')?.value?.trim() || '',
+      height: row.querySelector('td:nth-child(7) input')?.value?.trim() || '',
+      length: row.querySelector('td:nth-child(10) input')?.value?.trim() || '',
+    };
+  }
+
+  function isMaterialRow(row) {
+    return !!(row?.closest('#materialTableBody') || row.closest('#materialTableBody2'));
+  }
+
+  function getProductResolveContext(row) {
+    if (isMaterialRow(row)) {
+      return {
+        spec: getMaterialRowSpecValues(row),
+        codeInput: row.querySelector('td:nth-child(8) input'),
+        nameInput: row.querySelector('td:nth-child(9) input'),
+        pickerCol: 8,
+      };
+    }
+    return {
+      spec: getRowSpecValues(row),
+      codeInput: row.querySelector('td:nth-child(3) input'),
+      nameInput: row.querySelector('td:nth-child(7) input'),
+      pickerCol: 3,
+    };
+  }
+
   function clearProductNotFoundFields(row) {
-    const codeInput = row.querySelector('td:nth-child(3) input');
-    const nameInput = row.querySelector('td:nth-child(7) input');
+    const { codeInput, nameInput } = getProductResolveContext(row);
     setProductNotFoundUI(codeInput, nameInput, false);
   }
 
@@ -1010,9 +1039,9 @@
     refreshProductNotFoundUI(codeInput, nameInput);
   }
 
-  function showProductMatchPicker(row, matches, onPick) {
+  function showProductMatchPicker(row, matches, onPick, pickerCol = 3) {
     hideProductMatchPicker(row);
-    const cell = row.querySelector('td:nth-child(3)');
+    const cell = row.querySelector(`td:nth-child(${pickerCol})`);
     if (!cell || matches.length === 0) return;
     const wrap = document.createElement('div');
     wrap.className = 'product-match-picker';
@@ -1158,12 +1187,19 @@
     return [5, 6, 8].includes(idx) && el.matches('input');
   }
 
-  async function tryResolveProductForRow(row) {
-    if (row.closest('#materialTableBody') || row.closest('#materialTableBody2')) return;
+  function isMaterialSpecInputCell(row, el) {
+    if (!isMaterialRow(row)) return false;
+    const td = el.closest('td');
+    if (!td || !row.contains(td)) return false;
+    const idx = [...row.children].indexOf(td) + 1;
+    if (idx === 5 && el.matches('select.thickness-select')) return true;
+    return [6, 7, 10].includes(idx) && el.matches('input');
+  }
 
+  async function tryResolveProductForRow(row) {
     const pageRoot = getPageRoot(row);
     const type = getSelectedType(pageRoot);
-    const spec = getRowSpecValues(row);
+    const { spec, codeInput, nameInput, pickerCol } = getProductResolveContext(row);
     const { thickness, width, height, length } = spec;
 
     if (!hasAllSpecValues(spec)) {
@@ -1185,8 +1221,6 @@
       }
     }
 
-    const codeInput = row.querySelector('td:nth-child(3) input');
-    const nameInput = row.querySelector('td:nth-child(7) input');
     if (!codeInput || !nameInput) return;
 
     hideProductResolveHint(row);
@@ -1234,7 +1268,7 @@
           hideProductResolveHint(row);
           persistLocal();
           adjustNameColumnWidth();
-        });
+        }, pickerCol);
       } else {
         const other = type === '其他'
           ? pageRoot.querySelector('#typeOther')?.value?.trim() || ''
@@ -1271,8 +1305,12 @@
           if (other !== el) other.checked = false;
         });
         const tableId = pageRoot.id === 'autoPage' ? '#tableBody2' : '#tableBody';
+        const materialTableId = pageRoot.id === 'autoPage' ? '#materialTableBody2' : '#materialTableBody';
         pageRoot.querySelectorAll(`${tableId} tr`).forEach((row) => {
           if (!isMainDataRow(row)) return;
+          scheduleResolveProduct(row);
+        });
+        pageRoot.querySelectorAll(`${materialTableId} tr`).forEach((row) => {
           scheduleResolveProduct(row);
         });
       });
@@ -1283,8 +1321,8 @@
       typeOther.addEventListener('input', () => {
         const otherChecked = pageRoot.querySelector('input[name="type"][value="其他"]')?.checked;
         if (!otherChecked) return;
-        pageRoot.querySelectorAll('#tableBody tr').forEach((row) => {
-          if (!isMainDataRow(row)) return;
+        pageRoot.querySelectorAll('#tableBody tr, #materialTableBody tr').forEach((row) => {
+          if (row.closest('#tableBody') && !isMainDataRow(row)) return;
           scheduleResolveProduct(row);
         });
       });
@@ -1383,16 +1421,28 @@
     root.addEventListener('input', (e) => {
       const input = e.target;
       if (!input.matches('input')) return;
-      const row = input.closest('#tableBody tr, #tableBody2 tr');
-      if (!row || !isMainDataRow(row) || !isSpecInputCell(row, input)) return;
-      scheduleResolveProduct(row);
+      const row = input.closest('#tableBody tr, #tableBody2 tr, #materialTableBody tr, #materialTableBody2 tr');
+      if (!row) return;
+      if (isMainDataRow(row) && isSpecInputCell(row, input)) {
+        scheduleResolveProduct(row);
+        return;
+      }
+      if (isMaterialSpecInputCell(row, input)) {
+        scheduleResolveProduct(row);
+      }
     });
     root.addEventListener('change', (e) => {
       const select = e.target;
       if (!select.matches('select.thickness-select')) return;
-      const row = select.closest('#tableBody tr, #tableBody2 tr');
+      const row = select.closest('#tableBody tr, #tableBody2 tr, #materialTableBody tr, #materialTableBody2 tr');
       if (!row) return;
-      scheduleResolveProduct(row);
+      if (isMainDataRow(row)) {
+        scheduleResolveProduct(row);
+        return;
+      }
+      if (isMaterialSpecInputCell(row, select)) {
+        scheduleResolveProduct(row);
+      }
     });
   }
 
