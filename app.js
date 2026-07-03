@@ -2989,16 +2989,7 @@
       }
       console.log('submit result', data);
       if (!data.success) {
-        const err = data.error || '';
-        if (err.includes('満杯')) {
-          showOutsideMessage(
-            mainTr,
-            `送出失敗: ${err}。Google表 8–50 行がすべて使用中です。表の不要行を削除するか、生產紀錄で同單號を修正してください。`,
-            'error',
-          );
-        } else {
-          showOutsideMessage(mainTr, '送出失敗: ' + err, 'error');
-        }
+        showOutsideMessage(mainTr, '送出失敗: ' + (data.error || ''), 'error');
         return;
       }
 

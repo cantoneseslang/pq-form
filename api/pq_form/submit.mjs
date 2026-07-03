@@ -4,12 +4,10 @@ import {
   writeRowA1,
   findFirstEmptyRowInBlock,
   dataBlockRange,
-  copyRowTemplate,
-  applyDataRowLayout,
+  prepareNewDataRow,
+  ensureSheetRowCapacity,
   normalizeRowValues,
   DATA_START_ROW,
-  DATA_END_ROW,
-  STYLED_TEMPLATE_END_ROW,
 } from '../../lib/sheets.js';
 
 export const config = { runtime: 'nodejs' };
@@ -36,25 +34,20 @@ export default async function handler(req, res) {
     const { sheetName } = getSheetsClient();
     const requestedRow = parseInt(body?.targetRow, 10);
     let targetRow = Number.isFinite(requestedRow) ? requestedRow : null;
+    const isOverwrite = Boolean(targetRow);
 
-    if (targetRow) {
-      if (targetRow < DATA_START_ROW || targetRow > DATA_END_ROW) {
-        res.setHeader('Cache-Control', 'no-store');
-        return res.status(400).json({ success: false, error: `targetRow must be between ${DATA_START_ROW} and ${DATA_END_ROW}` });
-      }
-    } else {
+    if (targetRow && targetRow < DATA_START_ROW) {
+      res.setHeader('Cache-Control', 'no-store');
+      return res.status(400).json({ success: false, error: `targetRow must be >= ${DATA_START_ROW}` });
+    }
+
+    if (!targetRow) {
       const blockRange = dataBlockRange(sheetName);
       const block = await readRange(blockRange);
       targetRow = findFirstEmptyRowInBlock(block);
-      if (!targetRow) {
-        res.setHeader('Cache-Control', 'no-store');
-        return res.status(409).json({ success: false, error: `表の範囲(${DATA_START_ROW}-${DATA_END_ROW})が満杯です` });
-      }
-
-      if (targetRow > STYLED_TEMPLATE_END_ROW) {
-        await copyRowTemplate(sheetName, targetRow, DATA_START_ROW);
-      }
-      await applyDataRowLayout(sheetName, targetRow);
+      await prepareNewDataRow(sheetName, targetRow);
+    } else {
+      await ensureSheetRowCapacity(sheetName, targetRow);
     }
 
     const values = normalizeRowValues(rows[0]);
@@ -62,11 +55,9 @@ export default async function handler(req, res) {
     await writeRowA1(writeRange, values);
 
     res.setHeader('Cache-Control', 'no-store');
-    return res.status(200).json({ success: true, row: targetRow, range: writeRange });
+    return res.status(200).json({ success: true, row: targetRow, range: writeRange, overwrite: isOverwrite });
   } catch (e) {
     res.setHeader('Cache-Control', 'no-store');
     return res.status(500).json({ success: false, error: e?.message || String(e) });
   }
 }
-
-
