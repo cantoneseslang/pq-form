@@ -410,6 +410,7 @@ footer{text-align:center;color:#6c757d;margin:18px 0;padding:12px 0;margin-top:a
 }
 .production-record-meta{display:flex;align-items:center;gap:12px}
 .production-record-count{color:var(--muted);font-size:13px;font-weight:600}
+.production-record-import-badge{display:inline-block;margin-left:4px;padding:1px 5px;font-size:10px;font-weight:700;line-height:1.2;color:#7a5c00;background:#fff3bf;border:1px solid #f0d060;border-radius:4px;vertical-align:middle}
 .production-record-table{min-width:0;table-layout:fixed}
 .production-record-table thead th{
   font-size:11px;

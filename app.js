@@ -2959,11 +2959,14 @@
       const m = getProductionRecordDisplayMain(record);
       const mat = getProductionRecordDisplayMaterial(record);
       const corrected = !!record.correctedAt || !!record.correctionNote;
+      const importBadge = record.importedFromDailyReport
+        ? ' <span class="production-record-import-badge" title="從生產日報取込">日報</span>'
+        : '';
       return `<tr data-record-id="${escapeHtml(record.id)}" class="${corrected ? 'is-corrected' : ''}">
         <td>${escapeHtml(record.recordDate)}</td>
         <td>${escapeHtml(formatRecordSubmittedAtDisplay(record))}</td>
         <td>${escapeHtml(normalizeProductCodeForSubmit(m.productNo))}</td>
-        <td>${escapeHtml(m.name)}</td>
+        <td>${escapeHtml(m.name)}${importBadge}</td>
         <td>${escapeHtml(m.thickness)}</td>
         <td>${escapeHtml(m.width)}</td>
         <td>${escapeHtml(m.height)}</td>
@@ -3089,6 +3092,64 @@
     if (!ok) renderAllProductionRecords();
   }
 
+  function getDailyReportTabNameFromForm() {
+    const day = String(document.getElementById('day')?.value || '').trim();
+    if (!day || !/^\d{1,2}$/.test(day)) return '';
+    return String(parseInt(day, 10));
+  }
+
+  async function importFromDailyReportTab() {
+    const tabName = getDailyReportTabNameFromForm();
+    if (!tabName) {
+      showProductionRecordMessage('請先在表單設定日期（日）', 'error');
+      return;
+    }
+    const ok = window.confirm(
+      `從生產日報「${tabName}」日分取込到生產紀錄？\n材料單號需事後補填；已取込列會略過。`,
+    );
+    if (!ok) return;
+
+    showProductionRecordMessage('取込中…', 'success');
+    try {
+      const res = await fetch(`${API_BASE}/api/pq_form/daily_report/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({ tabName }),
+      });
+      const data = await res.json();
+      if (!data.success) {
+        showProductionRecordMessage(data.error || '取込失敗', 'error');
+        return;
+      }
+
+      for (const record of data.imported || []) {
+        upsertProductionRecord(record);
+      }
+      await fetchProductionRecordsFromServer();
+
+      const importedCount = (data.imported || []).length;
+      const skippedCount = (data.skipped || []).length;
+      const errorCount = (data.errors || []).length;
+      let msg = `取込完成：${importedCount} 筆`;
+      if (skippedCount) msg += `、略過 ${skippedCount} 筆`;
+      if (errorCount) msg += `、錯誤 ${errorCount} 筆`;
+      if (data.recordDateIso) msg += `（${data.recordDateIso}）`;
+
+      const ambiguous = (data.imported || []).filter((r) => {
+        const main = getProductionRecordDisplayMain(r);
+        return String(main.other || '').includes('候選複數');
+      });
+      if (ambiguous.length) {
+        msg += `；${ambiguous.length} 筆產品編號需確認`;
+      }
+
+      showProductionRecordMessage(msg, errorCount ? 'error' : 'success');
+    } catch (e) {
+      showProductionRecordMessage(e?.message || '取込失敗', 'error');
+    }
+  }
+
   const productionRecordModal = document.getElementById('productionRecordModal');
   const productionRecordEditForm = document.getElementById('productionRecordEditForm');
   const productionRecordEditError = document.getElementById('productionRecordEditError');
@@ -3178,6 +3239,8 @@
   function bindProductionRecordEvents() {
     document.getElementById('refreshProductionRecordsBtn')?.addEventListener('click', refreshProductionRecords);
     document.getElementById('refreshProductionRecordsBtn2')?.addEventListener('click', refreshProductionRecords);
+    document.getElementById('importDailyReportBtn')?.addEventListener('click', importFromDailyReportTab);
+    document.getElementById('importDailyReportBtn2')?.addEventListener('click', importFromDailyReportTab);
     document.getElementById('productionRecordEditSaveBtn')?.addEventListener('click', saveProductionRecordEditFromForm);
     document.getElementById('productionRecordEditCancelBtn')?.addEventListener('click', cancelProductionRecordFormEdit);
     document.addEventListener('change', (e) => {
