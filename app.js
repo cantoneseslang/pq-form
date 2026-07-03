@@ -669,7 +669,7 @@
   function showTransferRowConfirmModal(speedLabel) {
     const msgEl = document.getElementById('transferRowModalMessage');
     if (msgEl) {
-      msgEl.textContent = `你揀咗「${speedLabel}」。係咪要自動加一行，並複製呢行嘅產品編號、材料厚度、闊度、高度、產品名稱同長度？`;
+      msgEl.textContent = `你揀咗「${speedLabel}」。係咪要自動加一行（上段＋用料記録），並複製呢行嘅產品編號、材料厚度、闊度、高度、產品名稱同長度？`;
     }
     if (transferRowModal) transferRowModal.hidden = false;
     return new Promise((resolve) => {
@@ -1209,29 +1209,9 @@
     return [3, 6, 7, 10].includes(idx) && el.matches('input');
   }
 
-  function mainRowHasProductData(mainRow) {
-    const fields = getTopProductSyncFields(mainRow);
-    return !!(fields.code || fields.name || hasAllSpecValues({
-      thickness: fields.thickness,
-      width: fields.width,
-      height: fields.height,
-      length: fields.length,
-    }));
-  }
-
-  function syncMaterialRowFromMain(mainRow) {
-    if (!mainRow || !isMainDataRow(mainRow) || isMaterialRow(mainRow)) return;
-    if (!mainRowHasProductData(mainRow)) return;
-    appendMaterialRowFromMainRow(mainRow);
-  }
-
   async function tryResolveProductForRow(row) {
     const pageRoot = getPageRoot(row);
     const type = getSelectedType(pageRoot);
-    const isMain = isMainDataRow(row) && !isMaterialRow(row);
-    const maybeSyncMaterial = () => {
-      if (isMain) syncMaterialRowFromMain(row);
-    };
     const { spec, codeInput, nameInput, pickerCol } = getProductResolveContext(row);
     const { thickness, width, height, length } = spec;
 
@@ -1281,7 +1261,6 @@
         codeInput.classList.remove('product-not-found');
         nameInput.classList.remove('product-not-found');
         hideProductResolveHint(row);
-        maybeSyncMaterial();
         persistLocal();
         adjustNameColumnWidth();
       } else if (data.matches.length > 1) {
@@ -1300,11 +1279,9 @@
           codeInput.classList.remove('product-not-found');
           nameInput.classList.remove('product-not-found');
           hideProductResolveHint(row);
-          maybeSyncMaterial();
           persistLocal();
           adjustNameColumnWidth();
         }, pickerCol);
-        if (uniqueNames.length === 1) maybeSyncMaterial();
       } else {
         const other = type === '其他'
           ? pageRoot.querySelector('#typeOther')?.value?.trim() || ''
@@ -1315,7 +1292,6 @@
           buildProvisionalProductName(type, spec, other),
         );
         if (data.hint) showProductResolveHint(row, data.hint);
-        maybeSyncMaterial();
         persistLocal();
         adjustNameColumnWidth();
       }
@@ -2975,10 +2951,6 @@
       if(!data.rows || data.rows.length === 0) {
         addRow(1);
       }
-
-      [...tableBody.querySelectorAll('tr')].filter(isMainDataRow).forEach((tr) => {
-        syncMaterialRowFromMain(tr);
-      });
       
     }catch(e){ 
       addRow(1);
@@ -3096,15 +3068,8 @@
   // 初期計測（フォント読み込み後）
   window.addEventListener('load', ()=>{
     adjustNameColumnWidth();
-    // コード番号フィールドをクリア
-    clearProductNumberFields();
   });
   window.addEventListener('resize', adjustNameColumnWidth);
-  
-  // ページリフレッシュ時にコード番号フィールドをクリア
-  window.addEventListener('beforeunload', () => {
-    clearProductNumberFields();
-  });
 
   // ページ切り替え機能
   const moldingPage = getMoldingPageRoot();
