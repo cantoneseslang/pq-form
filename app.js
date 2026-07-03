@@ -2079,9 +2079,49 @@
     return inAutoPage ? 'auto' : 'molding';
   }
 
-  function buildProductionRecord(mainTr, sheetRow, inAutoPage) {
+  function normalizeOrderNo(value) {
+    return String(value ?? '').trim();
+  }
+
+  function sumMaterialQtyValues(values) {
+    let total = 0;
+    let hasAny = false;
+    for (const v of values) {
+      const n = parseInt(String(v ?? '').replace(/\D/g, ''), 10);
+      if (Number.isFinite(n)) {
+        total += n;
+        hasAny = true;
+      }
+    }
+    return hasAny ? String(total) : '';
+  }
+
+  function getMaterialRowsByOrderNo(inAutoPage, orderNo) {
+    const normalized = normalizeOrderNo(orderNo);
+    if (!normalized) return [];
+    const body = getMaterialBodyForPage(inAutoPage);
+    if (!body) return [];
+    return [...body.querySelectorAll('tr')].filter((tr) =>
+      normalizeOrderNo(getMaterialOrderNoValue(tr)) === normalized);
+  }
+
+  /** 同一單號の用料記録行の數量を合計して1件分の material データにする */
+  function buildAggregatedMaterialForOrderNo(inAutoPage, orderNo, fallbackTr = null) {
+    const rows = getMaterialRowsByOrderNo(inAutoPage, orderNo);
+    const sourceRows = rows.length ? rows : (fallbackTr ? [fallbackTr] : []);
+    if (!sourceRows.length) return {};
+    const base = serializeMaterialRow(sourceRows[0]);
+    const qty = sumMaterialQtyValues(sourceRows.map((tr) => serializeMaterialRow(tr).qty));
+    return { ...base, qty };
+  }
+
+  function buildProductionRecord(mainTr, sheetRow, inAutoPage, materialData = null) {
     const rowIndex = getMainRowIndex(mainTr);
     const materialTr = findMaterialRowForMain(mainTr, inAutoPage);
+    const material = materialData
+      || (materialTr
+        ? buildAggregatedMaterialForOrderNo(inAutoPage, getMaterialOrderNoValue(materialTr), materialTr)
+        : {});
     return {
       id: crypto.randomUUID(),
       recordDate: getFormDateString(inAutoPage),
@@ -2089,7 +2129,7 @@
       productTypes: collectChecks(inAutoPage ? '#autoPage input[name="type"]' : '#moldingPage input[name="type"]'),
       machines: collectChecks(inAutoPage ? '#autoPage input[name="machine"]' : '#moldingPage input[name="machine"]'),
       main: serializeMainRow(mainTr),
-      material: materialTr ? serializeMaterialRow(materialTr) : {},
+      material,
       sheetRow: sheetRow || null,
       sheetName: 'pq-form',
       correctionNote: '',
@@ -2098,13 +2138,20 @@
     };
   }
 
-  function buildProductionRecordPreview(mainTr, inAutoPage) {
-    const materialTr = findMaterialRowForMain(mainTr, inAutoPage);
+  function buildProductionRecordPreview(mainTr, inAutoPage, materialTr = null) {
+    const resolvedMaterialTr = materialTr || findMaterialRowForMain(mainTr, inAutoPage);
+    const material = resolvedMaterialTr
+      ? buildAggregatedMaterialForOrderNo(
+        inAutoPage,
+        getMaterialOrderNoValue(resolvedMaterialTr),
+        resolvedMaterialTr,
+      )
+      : {};
     return {
       recordDate: getFormDateString(inAutoPage),
       pageType: getProductionPageType(inAutoPage),
       main: serializeMainRow(mainTr),
-      material: materialTr ? serializeMaterialRow(materialTr) : {},
+      material,
     };
   }
 
@@ -2129,8 +2176,8 @@
     ].join('\u0001');
   }
 
-  function findDuplicateProductionRecord(mainTr, inAutoPage) {
-    const preview = buildProductionRecordPreview(mainTr, inAutoPage);
+  function findDuplicateProductionRecord(mainTr, inAutoPage, materialTr = null) {
+    const preview = buildProductionRecordPreview(mainTr, inAutoPage, materialTr);
     if (!preview.recordDate || !preview.main?.productNo) return null;
     const key = getProductionRecordDuplicateKey(preview);
     const matches = productionRecordsCache.filter((record) =>
@@ -2141,12 +2188,8 @@
     return matches.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
   }
 
-  function normalizeOrderNo(value) {
-    return String(value ?? '').trim();
-  }
-
-  function findDuplicateByOrderNo(mainTr, inAutoPage) {
-    const preview = buildProductionRecordPreview(mainTr, inAutoPage);
+  function findDuplicateByOrderNo(mainTr, inAutoPage, materialTr = null) {
+    const preview = buildProductionRecordPreview(mainTr, inAutoPage, materialTr);
     const orderNo = normalizeOrderNo(preview.material?.orderNo);
     if (!orderNo || !preview.recordDate) return null;
     const matches = productionRecordsCache.filter((record) =>
@@ -2825,10 +2868,13 @@
     ];
   }
 
-  async function overwriteExistingProductionRecord(tr, inAutoPage, existingRecord, sheetRow) {
+  async function overwriteExistingProductionRecord(tr, inAutoPage, existingRecord, sheetRow, materialData = null) {
     const main = serializeMainRow(tr);
     const materialTr = findMaterialRowForMain(tr, inAutoPage);
-    const material = materialTr ? serializeMaterialRow(materialTr) : (existingRecord.material || {});
+    const material = materialData
+      || (materialTr
+        ? buildAggregatedMaterialForOrderNo(inAutoPage, getMaterialOrderNoValue(materialTr), materialTr)
+        : (existingRecord.material || {}));
     const fallbackRecord = {
       ...existingRecord,
       main,
@@ -2868,7 +2914,10 @@
   }
 
   async function performRowSend(mainTr, inAutoPage, options = {}) {
-    const { overwriteRecord = null } = options;
+    const { overwriteRecord = null, materialTr = null } = options;
+    const materialData = materialTr
+      ? buildAggregatedMaterialForOrderNo(inAutoPage, getMaterialOrderNoValue(materialTr), materialTr)
+      : null;
 
     const headerPayload = {
       date: {
@@ -2906,12 +2955,12 @@
 
       if (overwriteRecord) {
         showOutsideMessage(mainTr, '已覆蓋舊紀錄（伺服器寫入）', 'success');
-        await overwriteExistingProductionRecord(mainTr, inAutoPage, overwriteRecord, data.row);
+        await overwriteExistingProductionRecord(mainTr, inAutoPage, overwriteRecord, data.row, materialData);
         return;
       }
 
       showOutsideMessage(mainTr, '已送出（伺服器寫入）', 'success');
-      const record = buildProductionRecord(mainTr, data.row, inAutoPage);
+      const record = buildProductionRecord(mainTr, data.row, inAutoPage, materialData);
       const saved = await saveProductionRecordToServer(record);
       upsertProductionRecord(saved || record);
     } catch (err) {
@@ -3025,27 +3074,29 @@
 
         await fetchProductionRecordsFromServer();
 
-        const orderDuplicate = findDuplicateByOrderNo(mainTr, inAutoPage);
+        const sendOptions = { materialTr };
+
+        const orderDuplicate = findDuplicateByOrderNo(mainTr, inAutoPage, materialTr);
         if (orderDuplicate) {
           const orderChoice = await showDuplicateConfirmModal(orderDuplicate, 'orderNo');
           if (orderChoice === 'cancel') return;
           if (orderChoice === 'overwrite') {
-            await performRowSend(mainTr, inAutoPage, { overwriteRecord: orderDuplicate });
+            await performRowSend(mainTr, inAutoPage, { ...sendOptions, overwriteRecord: orderDuplicate });
             return;
           }
         }
 
-        const specDuplicate = findDuplicateProductionRecord(mainTr, inAutoPage);
+        const specDuplicate = findDuplicateProductionRecord(mainTr, inAutoPage, materialTr);
         if (specDuplicate) {
           const specChoice = await showDuplicateConfirmModal(specDuplicate, 'spec');
           if (specChoice === 'cancel') return;
           if (specChoice === 'overwrite') {
-            await performRowSend(mainTr, inAutoPage, { overwriteRecord: specDuplicate });
+            await performRowSend(mainTr, inAutoPage, { ...sendOptions, overwriteRecord: specDuplicate });
             return;
           }
         }
 
-        await performRowSend(mainTr, inAutoPage);
+        await performRowSend(mainTr, inAutoPage, sendOptions);
       })();
   });
 
