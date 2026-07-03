@@ -520,11 +520,14 @@
         <input type="hidden" id="editRecordId" />
         <fieldset class="production-record-fieldset">
           <legend>上段（品質檢定）</legend>
-          <div class="production-record-form-grid production-record-form-grid--main-top">
-            <label>上料時間<input type="text" id="editMainLoad" /></label>
-            <label>開始時間<input type="text" id="editMainStart" /></label>
-            <label>完成時間<input type="text" id="editMainFinish" /></label>
-            <label>產品編號<input type="text" id="editMainProductNo" /></label>
+          <div class="production-record-form-grid production-record-form-grid--main-row1">
+            <label class="production-record-field-date">期日<input type="text" id="editRecordDate" placeholder="YYYY/MM/DD" autocomplete="off" /></label>
+            <label class="production-record-field-time">上料時間<input type="text" id="editMainLoad" /></label>
+            <label class="production-record-field-time">開始時間<input type="text" id="editMainStart" /></label>
+            <label class="production-record-field-time">完成時間<input type="text" id="editMainFinish" /></label>
+            <label class="production-record-field-product-no">產品編號<input type="text" id="editMainProductNo" /></label>
+          </div>
+          <div class="production-record-form-grid production-record-form-grid--main-spec">
             <label>材料厚度<input type="text" id="editMainThickness" /></label>
             <label>闊度<input type="text" id="editMainWidth" /></label>
             <label>高度<input type="text" id="editMainHeight" /></label>
@@ -574,7 +577,7 @@
     </div>
   </div>
 
-    <script src="app.js?v=20260703-41"></script>
+    <script src="app.js?v=20260703-42"></script>
   <noscript>請啟用JavaScript</noscript>
   <script>
     // 初始化時、工具列のチェック状態や列幅調整は app.js が担当

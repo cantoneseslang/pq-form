@@ -2,6 +2,7 @@ import { getSupabaseAdmin, isSupabaseConfigured } from '../../../lib/supabase.js
 import {
   dbRowToClient,
   writeMainDataToSheetRow,
+  normalizeRecordDate,
 } from '../../../lib/productionRecords.js';
 
 export const config = { runtime: 'nodejs' };
@@ -74,7 +75,7 @@ export default async function handler(req, res) {
     }
 
     const body = await parseJsonBody(req);
-    const { main, material, correction_note: correctionNote } = body;
+    const { main, material, correction_note: correctionNote, recordDate } = body;
 
     if (!main) {
       return res.status(400).json({ success: false, error: 'main is required' });
@@ -84,15 +85,21 @@ export default async function handler(req, res) {
     }
 
     const now = new Date().toISOString();
+    const updatePayload = {
+      main_data: main,
+      material_data: material || {},
+      correction_note: String(correctionNote).trim(),
+      updated_at: now,
+      corrected_at: now,
+    };
+    const normalizedDate = normalizeRecordDate(recordDate);
+    if (normalizedDate) {
+      updatePayload.record_date = normalizedDate;
+    }
+
     const { data, error } = await supabase
       .from('pq_production_records')
-      .update({
-        main_data: main,
-        material_data: material || {},
-        correction_note: String(correctionNote).trim(),
-        updated_at: now,
-        corrected_at: now,
-      })
+      .update(updatePayload)
       .eq('id', id)
       .select('*')
       .single();

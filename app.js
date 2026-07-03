@@ -2520,6 +2520,7 @@
     const m = record.main || {};
     const mat = record.material || {};
     document.getElementById('editRecordId').value = record.id;
+    document.getElementById('editRecordDate').value = record.recordDate || '';
     document.getElementById('editMainLoad').value = m.load || '';
     document.getElementById('editMainStart').value = m.start || '';
     document.getElementById('editMainFinish').value = m.finish || '';
@@ -2561,6 +2562,7 @@
       return;
     }
 
+    const recordDate = document.getElementById('editRecordDate').value.trim();
     const main = {
       ...record.main,
       load: document.getElementById('editMainLoad').value,
@@ -2596,12 +2598,13 @@
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
-        body: JSON.stringify({ main, material, correction_note: correctionNote }),
+        body: JSON.stringify({ main, material, recordDate, correction_note: correctionNote }),
       });
       const data = await res.json();
       if (res.status === 503) {
         upsertProductionRecord({
           ...record,
+          recordDate: recordDate || record.recordDate,
           main,
           material,
           correctionNote,
