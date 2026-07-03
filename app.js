@@ -37,12 +37,27 @@
     return Number.isFinite(num) ? num.toFixed(1) : text;
   }
 
-  /** 材料厚度記録は 0.8A のまま、產品名稱・plist 照合では 0.8 として扱う */
+  /** plist 照合のみ 0.8A→0.8。材料厚度・產品名稱表示は 0.8A のまま */
   function thicknessForProductLookup(value) {
     const formatted = formatThicknessValue(value);
     if (!formatted) return '';
     if (formatted.toUpperCase() === '0.8A') return '0.8';
     return formatted;
+  }
+
+  function getRecordedThickness(row) {
+    if (isMaterialRow(row)) {
+      return getThicknessValue(row, 5) || getThicknessValue(row, 2);
+    }
+    return getThicknessValue(row, 4);
+  }
+
+  function applyRecordedThicknessToProductName(name, recordedThickness) {
+    const displayT = formatThicknessValue(recordedThickness);
+    const lookupT = thicknessForProductLookup(recordedThickness);
+    if (!name || !displayT || displayT === lookupT) return name;
+    const escaped = lookupT.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return String(name).replace(new RegExp(`^${escaped}x`, 'i'), `${displayT}x`);
   }
 
   function thicknessMatches(a, b) {
@@ -1008,7 +1023,7 @@
       || row.querySelector('td:nth-child(3) input')?.value?.trim()
       || '';
     return {
-      thickness: thicknessForProductLookup(thicknessRaw),
+      thickness: thicknessRaw,
       width: widthRaw,
       height: row.querySelector('td:nth-child(7) input')?.value?.trim() || '',
       length: row.querySelector('td:nth-child(10) input')?.value?.trim() || '',
@@ -1238,10 +1253,15 @@
 
     hideProductResolveHint(row);
 
-    const params = new URLSearchParams({ type, t: thickness, w: width, h: height, l: length });
+    const lookupThickness = thicknessForProductLookup(thickness);
+    const recordedThickness = getRecordedThickness(row);
+    const params = new URLSearchParams({ type, t: lookupThickness, w: width, h: height, l: length });
     if (type === '其他') {
       params.set('other', pageRoot.querySelector('#typeOther')?.value?.trim() || '');
     }
+
+    const displayProductName = (name) => applyRecordedThicknessToProductName(name, recordedThickness);
+    const displaySpec = { ...spec, thickness: recordedThickness || thickness };
 
     try {
       const res = await fetch(`${API_BASE}/api/pq_form/plist/search?${params.toString()}`, { cache: 'no-store' });
@@ -1257,14 +1277,14 @@
       hideProductMatchPicker(row);
       if (data.matches.length === 1) {
         codeInput.value = data.matches[0].code;
-        nameInput.value = data.matches[0].name;
+        nameInput.value = displayProductName(data.matches[0].name);
         codeInput.classList.remove('product-not-found');
         nameInput.classList.remove('product-not-found');
         hideProductResolveHint(row);
         persistLocal();
         adjustNameColumnWidth();
       } else if (data.matches.length > 1) {
-        const uniqueNames = [...new Set(data.matches.map((m) => m.name))];
+        const uniqueNames = [...new Set(data.matches.map((m) => displayProductName(m.name)))];
         codeInput.value = '';
         codeInput.classList.remove('product-not-found');
         nameInput.classList.remove('product-not-found');
@@ -1275,7 +1295,7 @@
         }
         showProductMatchPicker(row, data.matches, (match) => {
           codeInput.value = match.code;
-          nameInput.value = match.name;
+          nameInput.value = displayProductName(match.name);
           codeInput.classList.remove('product-not-found');
           nameInput.classList.remove('product-not-found');
           hideProductResolveHint(row);
@@ -1289,7 +1309,7 @@
         showProductCodeNotFoundWithProvisionalName(
           codeInput,
           nameInput,
-          buildProvisionalProductName(type, spec, other),
+          buildProvisionalProductName(type, displaySpec, other),
         );
         if (data.hint) showProductResolveHint(row, data.hint);
         persistLocal();
