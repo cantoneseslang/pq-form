@@ -468,6 +468,7 @@
           <option value=""></option>
           <option value="F">F</option>
           <option value="C">C</option>
+          <option value="K">K</option>
         </select>
         <input type="text" class="order-no-number" placeholder="單號" inputmode="numeric" autocomplete="off" />
       </div>
@@ -481,6 +482,8 @@
     if (fs) return { prefix: 'F', number: fs[1], full: `FS#${fs[1]}` };
     const ck = raw.match(/^CK#(\d+)$/);
     if (ck) return { prefix: 'C', number: ck[1], full: `CK#${ck[1]}` };
+    const ks = raw.match(/^KS#(\d+)$/);
+    if (ks) return { prefix: 'K', number: ks[1], full: `KS#${ks[1]}` };
     const digits = raw.replace(/\D/g, '');
     return { prefix: '', number: digits, full: digits ? digits : '' };
   }
@@ -490,6 +493,7 @@
     if (!num) return '';
     if (prefix === 'F') return `FS#${num}`;
     if (prefix === 'C') return `CK#${num}`;
+    if (prefix === 'K') return `KS#${num}`;
     return num;
   }
 
