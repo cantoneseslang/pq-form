@@ -119,16 +119,18 @@
   }
 
   async function loadThicknessOptions() {
+    let fromApi = [];
     try {
       const res = await fetch(`${API_BASE}/api/pq_form/plist/thicknesses`, { cache: 'no-store' });
       const data = await res.json();
-      if (data.success && Array.isArray(data.thicknesses) && data.thicknesses.length) {
-        thicknessOptions = normalizeThicknessOptions([...data.thicknesses, ...FALLBACK_THICKNESS_OPTIONS]);
-        refreshThicknessSelects();
+      if (data.success && Array.isArray(data.thicknesses)) {
+        fromApi = data.thicknesses;
       }
     } catch (error) {
       console.warn('loadThicknessOptions failed, using fallback', error);
     }
+    thicknessOptions = normalizeThicknessOptions([...fromApi, ...FALLBACK_THICKNESS_OPTIONS]);
+    refreshThicknessSelects();
   }
 
   // Baiduブラウザ対応の時間入力フォーマット関数（上料時間用）
@@ -2977,6 +2979,7 @@
     await loadThicknessOptions();
     restoreLocal();
     initAutoPageRows();
+    refreshThicknessSelects();
     setToday();
     loadProductionRecordsLocal();
     renderAllProductionRecords();
