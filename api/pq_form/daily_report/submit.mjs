@@ -42,7 +42,6 @@ export default async function handler(req, res) {
       productTypes: body?.productTypes || {},
       mainLines,
       materialLines: Array.isArray(body?.materialLines) ? body.materialLines : [],
-      slotIndex: Number.isFinite(Number(body?.slotIndex)) ? Number(body.slotIndex) : 0,
     });
 
     res.setHeader('Cache-Control', 'no-store');

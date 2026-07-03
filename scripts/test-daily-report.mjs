@@ -45,3 +45,37 @@ function check(name, got, exp) {
 
 check('UT075', ut075, expected.UT075);
 check('UT100', ut100, expected.UT100);
+
+const productA = '0.8 x 75 x 50 Runner';
+const productB = '0.8 x 100 x 50 Stud';
+const productC = '0.8 x 75 x 50 Aluminium Corner Bead';
+
+function mockRows(entries) {
+  const rows = [];
+  for (const [rowNum, data] of Object.entries(entries)) {
+    const idx = Number(rowNum) - 1;
+    while (rows.length <= idx) rows.push([]);
+    rows[idx] = data;
+  }
+  return rows;
+}
+
+const blockRows = mockRows({
+  19: ['', '#3號滾壓成型機'],
+  20: ['達/嫻', productA, '3號滾壓成型機', '2440', '', '200', '', '1', '85', '10', '35', '80'],
+  21: [],
+  22: [],
+  23: [],
+  24: [],
+  25: [],
+  29: ['', '', '', '', 'Total:'],
+});
+
+const block3 = resolveMoldingMachineBlock(blockRows, '3號滾壓成型機');
+console.log('#3 slotRows', block3?.slotRows);
+console.log('same product → row 20', pickTargetRow(blockRows, block3, productA));
+console.log('new product B → row 21', pickTargetRow(blockRows, block3, productB));
+console.log('new product C → row 21', pickTargetRow(blockRows, block3, productC));
+
+blockRows[20] = ['達', productB, '', '2440', '', '100', '', '1', '60', '', '30', '70'];
+console.log('after B at 21, new C → row 22', pickTargetRow(blockRows, block3, productC));

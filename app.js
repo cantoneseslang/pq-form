@@ -2521,12 +2521,6 @@
     return res.json();
   }
 
-  function getDailyReportSlotIndex(inAutoPage, productNo) {
-    const groups = getProductGroupsFromForm(inAutoPage);
-    const idx = groups.findIndex((g) => g.productNo === productNo);
-    return idx >= 0 ? idx : 0;
-  }
-
   function saveProductionRecordsLocal() {
     try {
       localStorage.setItem(PRODUCTION_RECORDS_KEY, JSON.stringify(productionRecordsCache));
@@ -3337,7 +3331,6 @@
           productNo: clickedProduct,
           mainLines: snapshot.mainLines,
           materialLines: snapshot.materialLines,
-          slotIndex: getDailyReportSlotIndex(inAutoPage, clickedProduct),
         });
         if (dailyResult.success) {
           dailyReportNote = `・生產日報 ${dailyResult.tabName} 行 ${dailyResult.row}`;
