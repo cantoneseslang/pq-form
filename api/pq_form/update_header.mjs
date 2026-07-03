@@ -39,8 +39,8 @@ export default async function handler(req, res) {
     }
 
     const machMap = [
-      { key: '1號滾筒成形機', cell: 'B3' }, { key: '2號滾筒成形機', cell: 'D3' }, { key: '3號滾筒成形機', cell: 'F3' },
-      { key: '4號滾筒成形機', cell: 'H3' }, { key: '5號滾筒成形機', cell: 'J3' },
+      { key: '1號滾壓成型機', cell: 'B3' }, { key: '2號滾壓成型機', cell: 'D3' }, { key: '3號滾壓成型機', cell: 'F3' },
+      { key: '4號滾壓成型機', cell: 'H3' }, { key: '5號滾壓成型機', cell: 'J3' },
     ];
     machMap.forEach(({key, cell}) => updates.push({ range: `${sheetName}!${cell}`, values: [mach[key] ? 'TRUE' : 'FALSE'] }));
 
