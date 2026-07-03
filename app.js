@@ -2521,6 +2521,47 @@
     return res.json();
   }
 
+  function formatDailyReportSyncNote(dailyReport) {
+    if (!dailyReport) return '';
+    if (dailyReport.error) return '・生產日報寫入失敗';
+    if (dailyReport.skipped) return '';
+    if (dailyReport.cleared && dailyReport.tabName && dailyReport.row) {
+      return `・生產日報 ${dailyReport.tabName} 行 ${dailyReport.row} 已清除`;
+    }
+    if (dailyReport.tabName && dailyReport.row) {
+      return `・生產日報 ${dailyReport.tabName} 行 ${dailyReport.row}`;
+    }
+    return '';
+  }
+
+  async function linkDailyReportToProductionRecord(recordDate, pageType, productNo, dailyResult, machine) {
+    const record = findDuplicateFormBatchByProduct(recordDate, pageType, productNo);
+    if (!record?.id || !dailyResult?.tabName || !dailyResult?.row) return null;
+    try {
+      const res = await fetch(`${API_BASE}/api/pq_form/production_records/${encodeURIComponent(record.id)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        cache: 'no-store',
+        body: JSON.stringify({
+          linkDailyReportOnly: true,
+          dailyReportLink: {
+            tabName: dailyResult.tabName,
+            row: dailyResult.row,
+            machine: machine || '',
+          },
+        }),
+      });
+      const data = await res.json();
+      if (data.success && data.record) {
+        upsertProductionRecord(data.record);
+        return data.record;
+      }
+    } catch (e) {
+      console.warn('linkDailyReportToProductionRecord failed', e);
+    }
+    return null;
+  }
+
   function saveProductionRecordsLocal() {
     try {
       localStorage.setItem(PRODUCTION_RECORDS_KEY, JSON.stringify(productionRecordsCache));
@@ -2876,6 +2917,8 @@
       }
       upsertProductionRecord(data.record);
       closeProductionRecordModal();
+      const dailyNote = formatDailyReportSyncNote(data.dailyReport);
+      showProductionRecordMessage(`已修正${dailyNote}`, dailyNote.includes('失敗') ? 'error' : 'success');
     } catch (err) {
       productionRecordEditError.textContent = '保存失敗';
       productionRecordEditError.hidden = false;
@@ -2997,7 +3040,8 @@
       }
       if (res.ok && data.success) {
         removeProductionRecordFromCache(recordId);
-        showProductionRecordMessage('已刪除', 'success');
+        const dailyNote = formatDailyReportSyncNote(data.dailyReport);
+        showProductionRecordMessage(`已刪除${dailyNote}`, dailyNote.includes('失敗') ? 'error' : 'success');
         return { ok: true };
       }
       const error = data.error || '刪除失敗，請稍後再試';
@@ -3334,6 +3378,13 @@
         });
         if (dailyResult.success) {
           dailyReportNote = `・生產日報 ${dailyResult.tabName} 行 ${dailyResult.row}`;
+          await linkDailyReportToProductionRecord(
+            recordDate,
+            getProductionPageType(inAutoPage),
+            clickedProduct,
+            dailyResult,
+            getSelectedMachineValue(pageRoot),
+          );
         } else {
           console.warn('daily report submit failed', dailyResult.error);
           dailyReportNote = '・生產日報寫入失敗';

@@ -7,7 +7,14 @@ import {
   packMaterialData,
   unpackMainData,
   unpackMaterialData,
+  getMachineFromMachines,
+  parseRecordDateForDaily,
 } from '../../../lib/productionRecords.js';
+import {
+  updateDailyReportEntry,
+  deleteDailyReportEntry,
+  dailySheetTabName,
+} from '../../../lib/dailyReport.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -30,6 +37,56 @@ function extractId(req) {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const parts = url.pathname.split('/').filter(Boolean);
   return parts[parts.length - 1];
+}
+
+async function syncDailyReportForRecord(existing, mainLines, materialLines, dailyReportOverride = null) {
+  const dailyReport = dailyReportOverride || unpackMaterialData(existing.material_data || {}).dailyReport;
+  const recordDate = existing.record_date;
+  const date = parseRecordDateForDaily(recordDate);
+  if (!date) return { skipped: true, reason: 'invalid date' };
+
+  const pageType = existing.page_type === 'auto' ? 'auto' : 'molding';
+  const machine = dailyReport?.machine || getMachineFromMachines(existing.machines || {});
+  if (pageType === 'molding' && !machine) {
+    return { skipped: true, reason: 'machine not set' };
+  }
+
+  const tabFromDate = dailySheetTabName(date);
+  const storedRow = dailyReport?.tabName === tabFromDate ? dailyReport?.row : null;
+
+  return updateDailyReportEntry({
+    date,
+    pageType,
+    machine,
+    productTypes: existing.product_types || {},
+    mainLines,
+    materialLines,
+    targetRow: storedRow,
+    tabName: tabFromDate,
+  });
+}
+
+async function clearDailyReportForRecord(existing) {
+  const { dailyReport } = unpackMaterialData(existing.material_data || {});
+  const { mainLines, materialLines } = unpackMainData(existing.main_data || {});
+  const date = parseRecordDateForDaily(existing.record_date);
+  if (!date) return { skipped: true, reason: 'invalid date' };
+
+  const pageType = existing.page_type === 'auto' ? 'auto' : 'molding';
+  const machine = dailyReport?.machine || getMachineFromMachines(existing.machines || {});
+  const tabFromDate = dailySheetTabName(date);
+  const storedRow = dailyReport?.tabName === tabFromDate ? dailyReport?.row : null;
+
+  return deleteDailyReportEntry({
+    date,
+    pageType,
+    machine,
+    productTypes: existing.product_types || {},
+    mainLines,
+    materialLines,
+    targetRow: storedRow,
+    tabName: tabFromDate,
+  });
 }
 
 export default async function handler(req, res) {
@@ -63,6 +120,13 @@ export default async function handler(req, res) {
     }
 
     if (req.method === 'DELETE') {
+      let dailyReportResult = null;
+      try {
+        dailyReportResult = await clearDailyReportForRecord(existing);
+      } catch (dailyErr) {
+        dailyReportResult = { error: dailyErr?.message || String(dailyErr) };
+      }
+
       const now = new Date().toISOString();
       const { data, error } = await supabase
         .from('pq_production_records')
@@ -75,10 +139,39 @@ export default async function handler(req, res) {
         .single();
 
       if (error) throw error;
-      return res.status(200).json({ success: true, record: dbRowToClient(data) });
+      return res.status(200).json({
+        success: true,
+        record: dbRowToClient(data),
+        dailyReport: dailyReportResult,
+      });
     }
 
     const body = await parseJsonBody(req);
+
+    if (body?.linkDailyReportOnly && body?.dailyReportLink) {
+      const existingMaterial = unpackMaterialData(existing.material_data || {});
+      const now = new Date().toISOString();
+      const updatePayload = {
+        material_data: packMaterialData(
+          existingMaterial.material,
+          existingMaterial.materialLines,
+          existingMaterial.sheetRows,
+          body.dailyReportLink,
+        ),
+        updated_at: now,
+      };
+
+      const { data, error } = await supabase
+        .from('pq_production_records')
+        .update(updatePayload)
+        .eq('id', id)
+        .select('*')
+        .single();
+
+      if (error) throw error;
+      return res.status(200).json({ success: true, record: dbRowToClient(data) });
+    }
+
     const {
       main,
       material,
@@ -105,11 +198,17 @@ export default async function handler(req, res) {
     const resolvedSheetRows = Array.isArray(sheetRows) && sheetRows.length
       ? sheetRows
       : unpackMaterialData(material || {}).sheetRows;
+    const existingDailyReport = unpackMaterialData(existing.material_data || {}).dailyReport;
 
     const now = new Date().toISOString();
     const updatePayload = {
       main_data: packMainData(main, resolvedMainLines),
-      material_data: packMaterialData(material || {}, resolvedMaterialLines, resolvedSheetRows),
+      material_data: packMaterialData(
+        material || {},
+        resolvedMaterialLines,
+        resolvedSheetRows,
+        existingDailyReport,
+      ),
       correction_note: String(correctionNote).trim(),
       updated_at: now,
       corrected_at: now,
@@ -136,7 +235,22 @@ export default async function handler(req, res) {
       await writeMainLinesToSheet(resolvedMainLines, rowsToWrite, existing.sheet_name);
     }
 
-    return res.status(200).json({ success: true, record: dbRowToClient(data) });
+    let dailyReportResult = null;
+    try {
+      dailyReportResult = await syncDailyReportForRecord(
+        data,
+        resolvedMainLines,
+        resolvedMaterialLines,
+      );
+    } catch (dailyErr) {
+      dailyReportResult = { error: dailyErr?.message || String(dailyErr) };
+    }
+
+    return res.status(200).json({
+      success: true,
+      record: dbRowToClient(data),
+      dailyReport: dailyReportResult,
+    });
   } catch (e) {
     return res.status(500).json({ success: false, error: e?.message || String(e) });
   }
