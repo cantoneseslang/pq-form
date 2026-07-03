@@ -998,10 +998,6 @@
     refreshProductNotFoundUI(codeInput, nameInput);
   }
 
-  function isLengthMismatchHint(data) {
-    return data?.hintType === 'length';
-  }
-
   function showProductMatchPicker(row, matches, onPick) {
     hideProductMatchPicker(row);
     const cell = row.querySelector('td:nth-child(3)');
@@ -1228,18 +1224,14 @@
           adjustNameColumnWidth();
         });
       } else {
-        if (isLengthMismatchHint(data)) {
-          const other = type === '其他'
-            ? pageRoot.querySelector('#typeOther')?.value?.trim() || ''
-            : '';
-          showProductCodeNotFoundWithProvisionalName(
-            codeInput,
-            nameInput,
-            buildProvisionalProductName(type, spec, other)
-          );
-        } else {
-          showProductNotFound(codeInput, nameInput);
-        }
+        const other = type === '其他'
+          ? pageRoot.querySelector('#typeOther')?.value?.trim() || ''
+          : '';
+        showProductCodeNotFoundWithProvisionalName(
+          codeInput,
+          nameInput,
+          buildProvisionalProductName(type, spec, other),
+        );
         if (data.hint) showProductResolveHint(row, data.hint);
         persistLocal();
         adjustNameColumnWidth();
