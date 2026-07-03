@@ -2200,6 +2200,34 @@
     return matches.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0];
   }
 
+  /** 表が満杯のとき、同單號の既存 sheet 行を再利用する（同日優先） */
+  function findSheetRowForOrderNo(orderNo, recordDate = '') {
+    const normalized = normalizeOrderNo(orderNo);
+    if (!normalized) return null;
+    const withSheet = productionRecordsCache.filter((record) =>
+      isActiveProductionRecord(record)
+      && record.sheetRow
+      && normalizeOrderNo(record.material?.orderNo) === normalized);
+    if (!withSheet.length) return null;
+    if (recordDate) {
+      const sameDay = withSheet.filter((record) => record.recordDate === recordDate);
+      if (sameDay.length) {
+        return sameDay.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0].sheetRow;
+      }
+    }
+    return withSheet.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0))[0].sheetRow;
+  }
+
+  async function postSubmitRows(payload) {
+    const res = await fetch(`${API_BASE}/api/pq_form/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify(payload),
+    });
+    return res.json();
+  }
+
   function saveProductionRecordsLocal() {
     try {
       localStorage.setItem(PRODUCTION_RECORDS_KEY, JSON.stringify(productionRecordsCache));
@@ -2918,6 +2946,12 @@
     const materialData = materialTr
       ? buildAggregatedMaterialForOrderNo(inAutoPage, getMaterialOrderNoValue(materialTr), materialTr)
       : null;
+    const recordDate = getFormDateString(inAutoPage);
+    const orderNo = normalizeOrderNo(materialData?.orderNo || '');
+
+    if (orderNo && !findSheetRowForOrderNo(orderNo, recordDate)) {
+      await fetchProductionRecordsFromServer();
+    }
 
     const headerPayload = {
       date: {
@@ -2936,27 +2970,27 @@
     }).catch(() => {});
 
     const mapped = buildMappedRowFromTr(mainTr, false);
+    const orderDuplicate = overwriteRecord || findDuplicateByOrderNo(mainTr, inAutoPage, materialTr);
+    const sheetTargetRow = orderDuplicate?.sheetRow || findSheetRowForOrderNo(orderNo, recordDate);
     const payload = { rows: [mapped] };
-    const existingForSheet = overwriteRecord
-      || (materialTr ? findDuplicateByOrderNo(mainTr, inAutoPage, materialTr) : null);
-    const sheetTargetRow = existingForSheet?.sheetRow;
     if (sheetTargetRow) payload.targetRow = sheetTargetRow;
 
     try {
-      const res = await fetch(`${API_BASE}/api/pq_form/submit`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        cache: 'no-store',
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
+      let data = await postSubmitRows(payload);
+      if (!data.success && String(data.error || '').includes('満杯') && !payload.targetRow && orderNo) {
+        const fallbackRow = findSheetRowForOrderNo(orderNo);
+        if (fallbackRow) {
+          payload.targetRow = fallbackRow;
+          data = await postSubmitRows(payload);
+        }
+      }
       console.log('submit result', data);
       if (!data.success) {
         const err = data.error || '';
         if (err.includes('満杯')) {
           showOutsideMessage(
             mainTr,
-            `送出失敗: ${err}。Google表 8–50 行を整理するか、生產紀錄から同單號を修正してください。`,
+            `送出失敗: ${err}。Google表 8–50 行がすべて使用中です。表の不要行を削除するか、生產紀錄で同單號を修正してください。`,
             'error',
           );
         } else {
@@ -2965,12 +2999,16 @@
         return;
       }
 
-      if (overwriteRecord || existingForSheet) {
+      const sameDayOrderRecord = orderDuplicate && orderDuplicate.recordDate === recordDate
+        ? orderDuplicate
+        : null;
+
+      if (sameDayOrderRecord) {
         showOutsideMessage(mainTr, '已更新紀錄（同單號・數量合計・伺服器寫入）', 'success');
         await overwriteExistingProductionRecord(
           mainTr,
           inAutoPage,
-          overwriteRecord || existingForSheet,
+          sameDayOrderRecord,
           data.row,
           materialData,
         );
