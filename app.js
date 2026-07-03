@@ -1204,14 +1204,6 @@
       showOutsideMessage(mainTr, '請選擇產品編號', 'error');
       return false;
     }
-    const missing = [];
-    if (!isSplitTimeComplete(mainTr, 'time-load')) missing.push('上料時間');
-    if (!isSplitTimeComplete(mainTr, 'time-start')) missing.push('開始時間');
-    if (!isSplitTimeComplete(mainTr, 'time-finish')) missing.push('完成時間');
-    if (missing.length) {
-      showOutsideMessage(mainTr, `請填寫${missing.join('、')}`, 'error');
-      return false;
-    }
     const startMinutes = splitTimeToMinutes(mainTr, 'time-start');
     const finishMinutes = splitTimeToMinutes(mainTr, 'time-finish');
     if (startMinutes !== null && finishMinutes !== null && finishMinutes < startMinutes) {
