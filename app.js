@@ -2489,6 +2489,22 @@
     return res.json();
   }
 
+  async function postDailyReportSubmit(payload) {
+    const res = await fetch(`${API_BASE}/api/pq_form/daily_report/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      cache: 'no-store',
+      body: JSON.stringify(payload),
+    });
+    return res.json();
+  }
+
+  function getDailyReportSlotIndex(inAutoPage, productNo) {
+    const groups = getProductGroupsFromForm(inAutoPage);
+    const idx = groups.findIndex((g) => g.productNo === productNo);
+    return idx >= 0 ? idx : 0;
+  }
+
   function saveProductionRecordsLocal() {
     try {
       localStorage.setItem(PRODUCTION_RECORDS_KEY, JSON.stringify(productionRecordsCache));
@@ -3285,12 +3301,39 @@
 
       const savedCount = await persistAllProductionRecordsFromForm(mainTr, inAutoPage, data.row, materialTr);
       const hadDuplicate = orderDuplicate && orderDuplicate.recordDate === recordDate;
+
+      const snapshot = buildProductionLinesSnapshot(mainTr, inAutoPage, materialTr, data.row, orderDuplicate);
+      const pageRoot = getPageRootForAuto(inAutoPage);
+      let dailyReportNote = '';
+      try {
+        const dailyResult = await postDailyReportSubmit({
+          date: headerPayload.date,
+          pageType: getProductionPageType(inAutoPage),
+          machine: getSelectedMachineValue(pageRoot),
+          productTypes: headerPayload.types,
+          productNo: clickedProduct,
+          mainLines: snapshot.mainLines,
+          materialLines: snapshot.materialLines,
+          slotIndex: getDailyReportSlotIndex(inAutoPage, clickedProduct),
+        });
+        if (dailyResult.success) {
+          dailyReportNote = `・生產日報 ${dailyResult.tabName} 行 ${dailyResult.row}`;
+        } else {
+          console.warn('daily report submit failed', dailyResult.error);
+          dailyReportNote = '・生產日報寫入失敗';
+        }
+      } catch (dailyErr) {
+        console.warn('daily report submit error', dailyErr);
+        dailyReportNote = '・生產日報寫入失敗';
+      }
+
       let successMsg = '已送出（伺服器寫入）';
       if (savedCount > 1) {
         successMsg = `已保存 ${savedCount} 筆產品紀錄（伺服器寫入）`;
       } else if (hadDuplicate || savedCount === 1) {
         successMsg = '已更新紀錄（全行保存・伺服器寫入）';
       }
+      if (dailyReportNote) successMsg += dailyReportNote;
       showOutsideMessage(mainTr, successMsg, 'success');
     } catch (err) {
       console.error(err);

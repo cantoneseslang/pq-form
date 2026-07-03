@@ -5,6 +5,7 @@ export default async function handler(req, res) {
     res.setHeader('Cache-Control', 'no-store');
     return res.status(200).json({ ok: true, env: {
       sheetId: !!process.env.PQFORM_SHEET_ID,
+      dailyReportSheetId: !!process.env.PQFORM_DAILY_REPORT_SHEET_ID,
       saLen: (process.env.GOOGLE_SA_JSON || '').length,
       sheetName: process.env.PQFORM_SHEET_NAME || '(default)'
     }});
