@@ -94,6 +94,25 @@ body {
   gap: 10px;
 }
 
+.stock-check-items.is-aligned {
+  display: block;
+  gap: 0;
+  position: relative;
+}
+
+.stock-check-items.is-aligned .stock-check-slot {
+  position: absolute;
+  left: 0;
+  right: 0;
+  min-height: 0;
+}
+
+.stock-check-items.is-aligned .stock-card {
+  height: 100%;
+  min-height: 0;
+  overflow: auto;
+}
+
 .stock-check-slot {
   min-height: 118px;
 }
@@ -750,9 +769,24 @@ body {
     width: 100%;
   }
 
+  .stock-check-items.is-aligned .stock-check-slot {
+    position: static;
+    height: auto !important;
+  }
+
+  .stock-check-items {
+    margin-top: 0 !important;
+    height: auto !important;
+  }
+
   .stock-check-slot,
   .stock-card {
     min-height: auto;
+  }
+
+  .stock-check-items.is-aligned .stock-card {
+    height: auto;
+    overflow: visible;
   }
 }
 

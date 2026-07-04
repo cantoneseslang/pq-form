@@ -22,6 +22,8 @@
   let activeResolveItem = null;
   const resolveTimers = new Map();
   let stockByCode = null;
+  let stockAlignFrame = null;
+  let stockAlignObserver = null;
 
   function formatThicknessValue(value) {
     const text = String(value ?? '').trim();
@@ -212,10 +214,85 @@
     productItemsBody.innerHTML = rows + footer;
     refreshFieldFillStates(productItemsBody);
     renderStockCheckSlots();
+    scheduleStockCardAlignment();
   }
 
   function getItemRow(itemNo) {
     return productItemsBody.querySelector(`tr[data-item="${itemNo}"]`);
+  }
+
+  function getItemBlockRows(itemNo) {
+    const rows = productItemsBody.querySelectorAll(`tr[data-item="${itemNo}"]`);
+    if (!rows.length) return null;
+    return { first: rows[0], last: rows[rows.length - 1] };
+  }
+
+  function isStockPanelAlignedLayout() {
+    return window.matchMedia('(min-width: 901px)').matches;
+  }
+
+  function resetStockCardAlignment() {
+    if (!stockCheckItems) return;
+    stockCheckItems.classList.remove('is-aligned');
+    stockCheckItems.style.height = '';
+    stockCheckItems.style.marginTop = '';
+    stockCheckItems.querySelectorAll('.stock-check-slot').forEach((slot) => {
+      slot.style.top = '';
+      slot.style.height = '';
+    });
+  }
+
+  function syncStockCardAlignment() {
+    if (!stockCheckItems) return;
+    if (!isStockPanelAlignedLayout()) {
+      resetStockCardAlignment();
+      return;
+    }
+
+    const panel = stockCheckItems.closest('.stock-check-panel');
+    const titleEl = panel?.querySelector('.stock-check-panel__title');
+    const block1 = getItemBlockRows(1);
+    const blockLast = getItemBlockRows(ITEM_COUNT);
+    if (!panel || !titleEl || !block1 || !blockLast) return;
+
+    const productTop = block1.first.getBoundingClientRect().top;
+    const productBottom = blockLast.last.getBoundingClientRect().bottom;
+    const panelTop = panel.getBoundingClientRect().top;
+    const titleStyle = getComputedStyle(titleEl);
+    const titleBlockHeight = titleEl.offsetHeight + parseFloat(titleStyle.marginBottom || 0);
+
+    stockCheckItems.classList.add('is-aligned');
+    stockCheckItems.style.marginTop = `${Math.max(0, productTop - panelTop - titleBlockHeight)}px`;
+    stockCheckItems.style.height = `${productBottom - productTop}px`;
+
+    for (let n = 1; n <= ITEM_COUNT; n += 1) {
+      const block = getItemBlockRows(n);
+      const slot = stockCheckItems.querySelector(`[data-item="${n}"]`);
+      if (!block || !slot) continue;
+      const top = block.first.getBoundingClientRect().top - productTop;
+      const height = block.last.getBoundingClientRect().bottom - block.first.getBoundingClientRect().top;
+      slot.style.top = `${top}px`;
+      slot.style.height = `${height}px`;
+    }
+  }
+
+  function scheduleStockCardAlignment() {
+    if (stockAlignFrame) cancelAnimationFrame(stockAlignFrame);
+    stockAlignFrame = requestAnimationFrame(() => {
+      stockAlignFrame = null;
+      syncStockCardAlignment();
+    });
+  }
+
+  function bindStockCardAlignment() {
+    window.addEventListener('resize', scheduleStockCardAlignment);
+    window.addEventListener('load', scheduleStockCardAlignment);
+
+    const a4Sheet = document.querySelector('.a4-sheet');
+    if (a4Sheet && typeof ResizeObserver !== 'undefined') {
+      stockAlignObserver = new ResizeObserver(scheduleStockCardAlignment);
+      stockAlignObserver.observe(a4Sheet);
+    }
   }
 
   function getField(row, name) {
@@ -402,6 +479,7 @@
     }
 
     slot.innerHTML = cardHtml;
+    scheduleStockCardAlignment();
   }
 
   function renderStockCheckSlots() {
@@ -413,6 +491,7 @@
     for (let i = 1; i <= ITEM_COUNT; i += 1) {
       renderStockCardSlot(i, 'empty');
     }
+    scheduleStockCardAlignment();
   }
 
   async function updateStockCardForItem(itemNo) {
@@ -846,8 +925,10 @@
     updateOrderSheetDateDisplay();
     refreshFieldFillStates();
     bindEvents();
+    bindStockCardAlignment();
     for (let i = 1; i <= ITEM_COUNT; i += 1) scheduleResolveProduct(i);
     syncAllStockCards();
+    scheduleStockCardAlignment();
   }
 
   initApp();
