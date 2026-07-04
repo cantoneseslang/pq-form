@@ -27,6 +27,7 @@
   function toTF(v){ return v ? 'TRUE' : 'FALSE'; }
 
   const FALLBACK_THICKNESS_OPTIONS = ['0.3', '0.4', '0.4D', '0.5', '0.6', '0.8', '0.8A', '1.0', '1.2', '1.5', '3.0'];
+  const OPERATOR_OPTIONS = ['達', '嫻', '林'];
   let thicknessOptions = [...FALLBACK_THICKNESS_OPTIONS];
 
   function formatThicknessValue(value) {
@@ -344,6 +345,23 @@
     renderAllProductionRecords();
   }
 
+  function buildOperatorSelectOptionsHtml(selected = '') {
+    return ['', ...OPERATOR_OPTIONS].map((opt) =>
+      `<option value="${opt}"${opt === selected ? ' selected' : ''}>${opt}</option>`).join('');
+  }
+
+  function syncAllOperatorSelects(root = document) {
+    root.querySelectorAll('select[data-field="operator"]').forEach((select) => {
+      const current = select.value;
+      select.innerHTML = buildOperatorSelectOptionsHtml('');
+      if (OPERATOR_OPTIONS.includes(current)) {
+        select.value = current;
+      } else if (current) {
+        select.innerHTML += `<option value="${current}" selected>${current}</option>`;
+      }
+    });
+  }
+
   function createRow(){
     const tr = document.createElement('tr');
     tr.innerHTML = `
@@ -361,11 +379,8 @@
       <td class="chk"><div class="three-state-checkbox" data-field="up_down_bend"><div class="checkbox-box"><span class="checkbox-text"></span></div></div></td>
       <td class="chk"><div class="three-state-checkbox" data-field="twist"><div class="checkbox-box"><span class="checkbox-text"></span></div></div></td>
       <td>
-        <select>
-          <option value=""></option>
-          <option value="達">達</option>
-          <option value="嫻">嫻</option>
-          <option value="林">林</option>
+        <select data-field="operator">
+          ${buildOperatorSelectOptionsHtml()}
         </select>
       </td>
       <td>${timeSplitHtml('time-finish')}</td>
@@ -2545,7 +2560,7 @@
   }
 
   function buildEditOperatorSelectHtml(value) {
-    const options = ['', '達', '嫻', '林'];
+    const options = ['', ...OPERATOR_OPTIONS];
     return `<select data-field="operator">${options.map((opt) =>
       `<option value="${opt}"${opt === value ? ' selected' : ''}>${opt || '—'}</option>`).join('')}</select>`;
   }
@@ -3883,6 +3898,7 @@
     await loadThicknessOptions();
     restoreLocal();
     initAutoPageRows();
+    syncAllOperatorSelects();
     refreshThicknessSelects();
     setToday();
     loadProductionRecordsLocal();
@@ -3902,6 +3918,7 @@
 
   window.addEventListener('pageshow', () => {
     setToday();
+    syncAllOperatorSelects();
   });
 
   // 初期計測（フォント読み込み後）
