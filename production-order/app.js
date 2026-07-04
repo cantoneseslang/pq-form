@@ -441,7 +441,6 @@
 
   function buildStockDetailsHtml(stock) {
     const parts = [];
-    if (stock.location) parts.push(`📍 ${escapeHtml(stock.location)}`);
     if (stock.onHand !== null && stock.onHand !== undefined) {
       parts.push(`📦 OH ${escapeHtml(formatStockQuantity(stock.onHand, stock.unit))}`);
     }
