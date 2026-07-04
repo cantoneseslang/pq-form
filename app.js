@@ -899,6 +899,37 @@
     return el.closest('#autoPage') || getMoldingPageRoot();
   }
 
+  const PRODUCT_TYPE_KEYS = ['企筒', '地槽', '鐵角', '批灰角', 'W角', '闊槽', 'C槽', 'CT企筒打孔', '其他'];
+
+  function inferProductTypeKeyFromName(name) {
+    const text = String(name ?? '');
+    for (const key of PRODUCT_TYPE_KEYS) {
+      if (key !== '其他' && text.includes(key)) return key;
+    }
+    const lower = text.toLowerCase();
+    if (/corner bead|l-?bead/.test(lower)) return '批灰角';
+    if (/\bstud\b/.test(lower)) return '企筒';
+    if (/\brunner\b/.test(lower)) return '地槽';
+    if (/\bw angle\b/.test(lower)) return 'W角';
+    if (/\bc channel\b/.test(lower)) return 'C槽';
+    if (/\bchannel\b/.test(lower)) return '闊槽';
+    if (/\bangle\b/.test(lower)) return '鐵角';
+    return '';
+  }
+
+  function buildProductTypesFromKey(typeKey) {
+    const types = {};
+    for (const key of PRODUCT_TYPE_KEYS) types[key] = key === typeKey;
+    return types;
+  }
+
+  function resolveProductTypesForRecord(record, mainLines) {
+    const existing = record.productTypes || {};
+    if (Object.values(existing).some(Boolean)) return existing;
+    const inferred = inferProductTypeKeyFromName(mainLines[0]?.name || record.main?.name || '');
+    return inferred ? buildProductTypesFromKey(inferred) : existing;
+  }
+
   function getSelectedType(pageRoot) {
     const checked = pageRoot?.querySelector('input[name="type"]:checked');
     return checked ? checked.value : '';
@@ -2404,11 +2435,12 @@
     else switchToMolding();
 
     setFormDateParts(inAutoPage, parseRecordDateParts(record.recordDate));
-    applyChecksToPage(inAutoPage, record.productTypes || {}, record.machines || {});
+    const { mainLines, materialLines } = normalizeProductionRecordLines(record);
+    const productTypes = resolveProductTypesForRecord(record, mainLines);
+    applyChecksToPage(inAutoPage, productTypes, record.machines || {});
 
     const mainBody = inAutoPage ? tableBody2 : tableBody;
     const materialBody = inAutoPage ? materialTableBody2 : materialTableBody;
-    const { mainLines, materialLines } = normalizeProductionRecordLines(record);
 
     if (mainBody) {
       mainBody.innerHTML = '';
@@ -2429,6 +2461,17 @@
         const tr = createMaterialRow();
         deserializeMaterialRow(tr, lineData);
         materialBody.appendChild(tr);
+      });
+    }
+
+    if (mainBody) {
+      mainBody.querySelectorAll('tr').forEach((row) => {
+        if (isMainDataRow(row)) scheduleResolveProduct(row);
+      });
+    }
+    if (materialBody) {
+      materialBody.querySelectorAll('tr').forEach((row) => {
+        if (isMaterialRow(row) && !isMaterialRowTemplateEmpty(row)) scheduleResolveProduct(row);
       });
     }
 
