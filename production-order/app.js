@@ -604,7 +604,7 @@
       const displayName = (name) => applyRecordedThicknessToProductName(name, spec.thickness);
 
       if (!data.success) {
-        setProductOutputs(row, NOT_FOUND_CODE, NOT_FOUND_NAME, true);
+        setProductOutputs(row, NOT_FOUND_CODE, NOT_FOUND_NAME, true, '');
         return;
       }
 
@@ -630,7 +630,7 @@
       }
     } catch (error) {
       console.error('plist search failed', error);
-      setProductOutputs(row, NOT_FOUND_CODE, NOT_FOUND_NAME, true);
+      setProductOutputs(row, NOT_FOUND_CODE, NOT_FOUND_NAME, true, '');
     }
   }
 
