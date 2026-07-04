@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>生產依頼書 Production Order Sheet</title>
+  <link rel="stylesheet" href="production-order.css" />
+</head>
+<body>
+  <div class="pos-toolbar no-print">
+    <a class="pos-toolbar__link" href="/">返回 PQ-Form</a>
+    <button id="submitBtn" class="pos-toolbar__btn pos-toolbar__btn--primary" type="submit" form="productionOrderForm">送出至 Google Sheet</button>
+    <button id="clearBtn" class="pos-toolbar__btn" type="button">清空表單</button>
+    <p id="formMessage" class="pos-toolbar__msg" hidden></p>
+  </div>
+
+  <form id="productionOrderForm" class="pos-form" novalidate>
+    <div class="pos-workspace">
+    <article class="a4-sheet">
+      <table class="pos pos-header" aria-label="表頭">
+        <colgroup>
+          <col class="col-logo" />
+          <col class="col-logo" />
+          <col span="5" />
+          <col class="col-tagline" />
+          <col class="col-tagline" />
+        </colgroup>
+        <tr>
+          <td class="pos-logo" colspan="2" rowspan="2">
+            <img src="../logo.png" alt="KIRII" />
+          </td>
+          <td class="pos-company" colspan="5" rowspan="2">KIRII (HONG KONG) LIMITED</td>
+          <td class="pos-tagline" colspan="2" rowspan="2">
+            Metal Products<br />for Interior Finishing
+          </td>
+        </tr>
+        <tr></tr>
+      </table>
+
+      <table class="pos pos-info" aria-label="訂單資料">
+        <colgroup>
+          <col class="col-info-label" />
+          <col class="col-info-value" />
+          <col class="col-info-label" />
+          <col class="col-info-value" />
+          <col class="col-info-label" />
+          <col class="col-info-value" />
+        </colgroup>
+        <tr>
+          <td class="pos-label">出貨單編號：</td>
+          <td class="pos-delivery-note-no">
+            <span id="deliveryNoteNoPrefix" class="cell-prefix">SC/</span>
+            <input id="deliveryNoteNoSuffix" class="cell-input cell-input--note-no" type="text" inputmode="numeric" maxlength="3" autocomplete="off" aria-label="出貨單編號末3位" />
+          </td>
+          <td class="pos-label">客戶編號：</td>
+          <td><input id="customerNo" class="cell-input" type="text" autocomplete="off" /></td>
+          <td class="pos-label">訂貨公司：</td>
+          <td><input id="orderingCompany" class="cell-input" type="text" autocomplete="off" /></td>
+        </tr>
+        <tr>
+          <td class="pos-label">出貨日期：</td>
+          <td><input id="deliveryDate" class="cell-input" type="text" autocomplete="off" placeholder="YYYY/M/D" /></td>
+          <td class="pos-label">訂貨日期：</td>
+          <td colspan="3"><input id="orderDate" class="cell-input" type="text" autocomplete="off" placeholder="YYYY/M/D" /></td>
+        </tr>
+        <tr class="pos-info-spacer">
+          <td colspan="6"></td>
+        </tr>
+        <tr>
+          <td class="pos-label">預計生產期：</td>
+          <td><input id="estimatedProductionPeriod" class="cell-input" type="text" autocomplete="off" /></td>
+          <td class="pos-label">完成日期：</td>
+          <td colspan="3"><input id="completionDate" class="cell-input" type="text" autocomplete="off" placeholder="YYYY/M/D" /></td>
+        </tr>
+        <tr>
+          <td class="pos-label">負 責 人：</td>
+          <td><input id="personInCharge" class="cell-input" type="text" autocomplete="off" /></td>
+          <td class="pos-label">負責人簽名：</td>
+          <td colspan="3"><input id="signature" class="cell-input" type="text" autocomplete="off" /></td>
+        </tr>
+      </table>
+
+      <table class="pos pos-product" aria-label="產品明細">
+        <colgroup>
+          <col class="col-item" />
+          <col class="col-b" />
+          <col class="col-c" />
+          <col class="col-d" />
+          <col class="col-e" />
+          <col class="col-f" />
+          <col class="col-g" />
+          <col class="col-qty" />
+        </colgroup>
+        <thead>
+          <tr class="pos-product-head">
+            <th>項<br />目</th>
+            <th colspan="6">產 品 編 碼 / 貨 品 名 稱 / 生 產 機 號</th>
+            <th>數<br />量</th>
+          </tr>
+        </thead>
+        <tbody id="productItemsBody"></tbody>
+      </table>
+
+      <div class="pos-hint-area no-print">
+        <p id="productResolveHint" class="pos-hint" hidden></p>
+        <div id="productMatchPicker" class="product-match-picker" hidden></div>
+      </div>
+    </article>
+
+    <aside class="stock-check-panel no-print" aria-label="在庫チェック">
+      <div class="stock-check-panel__title">在庫チェック / Stock Check</div>
+      <div id="stockCheckItems" class="stock-check-items"></div>
+    </aside>
+    </div>
+  </form>
+
+  <script src="app.js"></script>
+</body>
+</html>
