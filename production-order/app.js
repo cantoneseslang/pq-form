@@ -442,13 +442,13 @@
   function buildStockDetailsHtml(stock) {
     const parts = [];
     if (stock.onHand !== null && stock.onHand !== undefined) {
-      parts.push(`📦 OH ${escapeHtml(formatStockQuantity(stock.onHand, stock.unit))}`);
+      parts.push(`OH ${escapeHtml(formatStockQuantity(stock.onHand, stock.unit))}`);
     }
     if (stock.withoutDn !== null && stock.withoutDn !== undefined) {
-      parts.push(`📃 w/o ${escapeHtml(formatStockQuantity(stock.withoutDn, stock.unit))}`);
+      parts.push(`w/o ${escapeHtml(formatStockQuantity(stock.withoutDn, stock.unit))}`);
     }
     if (stock.available !== null && stock.available !== undefined) {
-      parts.push(`Avail 📊 ${escapeHtml(formatStockQuantity(stock.available, stock.unit))}`);
+      parts.push(`Avail ${escapeHtml(formatStockQuantity(stock.available, stock.unit))}`);
     }
     if (stock.category) parts.push(`🏷️ ${escapeHtml(stock.category)}`);
     return parts.join(' | ');
