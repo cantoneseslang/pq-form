@@ -364,8 +364,8 @@
         <select>
           <option value=""></option>
           <option value="達">達</option>
-          <option value="群">群</option>
           <option value="嫻">嫻</option>
+          <option value="林">林</option>
         </select>
       </td>
       <td>${timeSplitHtml('time-finish')}</td>
@@ -2545,7 +2545,7 @@
   }
 
   function buildEditOperatorSelectHtml(value) {
-    const options = ['', '達', '群', '嫻'];
+    const options = ['', '達', '嫻', '林'];
     return `<select data-field="operator">${options.map((opt) =>
       `<option value="${opt}"${opt === value ? ' selected' : ''}>${opt || '—'}</option>`).join('')}</select>`;
   }
