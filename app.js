@@ -2122,6 +2122,8 @@
   let productionRecordsCache = [];
   let productionRecordFilterMonth = '';
   let productionRecordFilterType = '';
+  let productionRecordFilterMachine = '';
+  const PRODUCTION_RECORD_MACHINE_FILTER_ORDER = ['1號', '2號', '3號', '4號', '5號', '自動'];
   let editingProductionRecord = null;
   let formStateBeforeEdit = null;
 
@@ -2931,6 +2933,28 @@
     return `${m[1]}/${String(parseInt(m[2], 10)).padStart(2, '0')}`;
   }
 
+  function getRecordMachineName(record) {
+    if (record?.dailyReport?.machine) return record.dailyReport.machine;
+    const machines = record?.machines || {};
+    for (const [name, on] of Object.entries(machines)) {
+      if (on) return name;
+    }
+    return '';
+  }
+
+  function formatMachineShortLabel(machineName) {
+    const name = String(machineName ?? '').trim();
+    if (!name) return '';
+    const m = name.match(/^(\d+)號/);
+    if (m) return `${m[1]}號`;
+    if (/自動/.test(name)) return '自動';
+    return name;
+  }
+
+  function getRecordMachineShortLabel(record) {
+    return formatMachineShortLabel(getRecordMachineName(record));
+  }
+
   function getRecordProductTypeLabel(record) {
     const types = record?.productTypes || {};
     const selected = Object.keys(types).filter((key) => types[key] && key !== '其他入力');
@@ -2961,6 +2985,9 @@
       if (productionRecordFilterType && getRecordProductTypeLabel(record) !== productionRecordFilterType) {
         return false;
       }
+      if (productionRecordFilterMachine && getRecordMachineShortLabel(record) !== productionRecordFilterMachine) {
+        return false;
+      }
       return true;
     });
   }
@@ -2971,6 +2998,9 @@
     });
     document.querySelectorAll('.production-record-type-filter').forEach((select) => {
       select.value = productionRecordFilterType;
+    });
+    document.querySelectorAll('.production-record-machine-filter').forEach((select) => {
+      select.value = productionRecordFilterMachine;
     });
   }
 
@@ -2990,12 +3020,27 @@
     if (productionRecordFilterType && !typeOptions.includes(productionRecordFilterType)) {
       productionRecordFilterType = '';
     }
+    const machineOptions = [...new Set(records.map(getRecordMachineShortLabel).filter(Boolean))]
+      .sort((a, b) => {
+        const ai = PRODUCTION_RECORD_MACHINE_FILTER_ORDER.indexOf(a);
+        const bi = PRODUCTION_RECORD_MACHINE_FILTER_ORDER.indexOf(b);
+        if (ai === -1 && bi === -1) return a.localeCompare(b, 'zh-Hant');
+        if (ai === -1) return 1;
+        if (bi === -1) return -1;
+        return ai - bi;
+      });
+    if (productionRecordFilterMachine && !machineOptions.includes(productionRecordFilterMachine)) {
+      productionRecordFilterMachine = '';
+    }
 
     const monthHtml = ['<option value="">全部月份</option>']
       .concat(monthOptions.map((month) => `<option value="${escapeHtml(month)}">${escapeHtml(formatMonthFilterLabel(month))}</option>`))
       .join('');
     const typeHtml = ['<option value="">全部種類</option>']
       .concat(typeOptions.map((type) => `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`))
+      .join('');
+    const machineHtml = ['<option value="">全部機械</option>']
+      .concat(machineOptions.map((machine) => `<option value="${escapeHtml(machine)}">${escapeHtml(machine)}</option>`))
       .join('');
 
     document.querySelectorAll('.production-record-month-filter').forEach((select) => {
@@ -3006,11 +3051,15 @@
       select.innerHTML = typeHtml;
       select.value = productionRecordFilterType;
     });
+    document.querySelectorAll('.production-record-machine-filter').forEach((select) => {
+      select.innerHTML = machineHtml;
+      select.value = productionRecordFilterMachine;
+    });
   }
 
   function buildProductionRecordsTableBodyHtml(records, emptyMessage = '尚無生產紀錄') {
     if (records.length === 0) {
-      return `<tr class="production-record-empty"><td colspan="15">${escapeHtml(emptyMessage)}</td></tr>`;
+      return `<tr class="production-record-empty"><td colspan="16">${escapeHtml(emptyMessage)}</td></tr>`;
     }
 
     return records.map((record) => {
@@ -3023,6 +3072,7 @@
       return `<tr data-record-id="${escapeHtml(record.id)}" class="${corrected ? 'is-corrected' : ''}">
         <td>${escapeHtml(record.recordDate)}</td>
         <td>${escapeHtml(formatRecordSubmittedAtDisplay(record))}</td>
+        <td>${escapeHtml(getRecordMachineShortLabel(record))}</td>
         <td>${escapeHtml(normalizeProductCodeForSubmit(m.productNo))}</td>
         <td>${escapeHtml(m.name)}${importBadge}</td>
         <td>${escapeHtml(m.thickness)}</td>
@@ -3046,10 +3096,10 @@
   function renderProductionRecordsTable() {
     const allRecords = getSortedActiveProductionRecords();
     const records = getFilteredProductionRecords();
-    const countText = (productionRecordFilterMonth || productionRecordFilterType)
+    const countText = (productionRecordFilterMonth || productionRecordFilterType || productionRecordFilterMachine)
       ? `${records.length} 筆（共 ${allRecords.length} 筆）`
       : `${records.length} 筆`;
-    const emptyMessage = (productionRecordFilterMonth || productionRecordFilterType) && records.length === 0
+    const emptyMessage = (productionRecordFilterMonth || productionRecordFilterType || productionRecordFilterMachine) && records.length === 0
       ? '沒有符合篩選條件的生產紀錄'
       : '尚無生產紀錄';
     const bodyHtml = buildProductionRecordsTableBodyHtml(records, emptyMessage);
@@ -3310,6 +3360,12 @@
       }
       if (e.target.matches('.production-record-type-filter')) {
         productionRecordFilterType = e.target.value;
+        syncProductionRecordFilterSelects();
+        renderProductionRecordsTable();
+        return;
+      }
+      if (e.target.matches('.production-record-machine-filter')) {
+        productionRecordFilterMachine = e.target.value;
         syncProductionRecordFilterSelects();
         renderProductionRecordsTable();
       }

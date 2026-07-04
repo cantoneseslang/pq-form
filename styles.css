@@ -396,7 +396,8 @@ footer{text-align:center;color:#6c757d;margin:18px 0;padding:12px 0;margin-top:a
 .production-record-header h2{margin:0;font-size:18px;white-space:nowrap;flex:0 0 auto}
 .production-record-filter-caption{font-size:12px;font-weight:600;color:var(--muted);white-space:nowrap;flex:0 0 auto}
 .production-record-header__left select.production-record-month-filter,
-.production-record-header__left select.production-record-type-filter{
+.production-record-header__left select.production-record-type-filter,
+.production-record-header__left select.production-record-machine-filter{
   flex:0 0 auto;min-width:118px;max-width:148px;padding:7px 28px 7px 10px;font-size:13px;font-weight:500;line-height:1.3;height:auto;
   color:var(--text);background-color:#fff;border:1px solid var(--border);border-radius:6px;cursor:pointer;
   appearance:none;-webkit-appearance:none;
@@ -404,8 +405,10 @@ footer{text-align:center;color:#6c757d;margin:18px 0;padding:12px 0;margin-top:a
   background-repeat:no-repeat;background-position:right 10px center;background-size:12px;
 }
 .production-record-header__left select.production-record-type-filter{min-width:124px;max-width:168px}
+.production-record-header__left select.production-record-machine-filter{min-width:96px;max-width:112px}
 .production-record-header__left select.production-record-month-filter:focus,
-.production-record-header__left select.production-record-type-filter:focus{
+.production-record-header__left select.production-record-type-filter:focus,
+.production-record-header__left select.production-record-machine-filter:focus{
   outline:none;border-color:var(--primary);box-shadow:0 0 0 2px rgba(30,136,229,.15);
 }
 .production-record-meta{display:flex;align-items:center;gap:12px}
@@ -422,7 +425,7 @@ footer{text-align:center;color:#6c757d;margin:18px 0;padding:12px 0;margin-top:a
 .production-record-table tbody td{font-size:13px;padding:6px 4px;vertical-align:middle;word-break:break-word}
 .production-record-table tbody td:nth-child(1),
 .production-record-table tbody td:nth-child(2),
-.production-record-table tbody td:nth-child(5),
+.production-record-table tbody td:nth-child(3),
 .production-record-table tbody td:nth-child(6),
 .production-record-table tbody td:nth-child(7),
 .production-record-table tbody td:nth-child(8),
@@ -430,10 +433,11 @@ footer{text-align:center;color:#6c757d;margin:18px 0;padding:12px 0;margin-top:a
 .production-record-table tbody td:nth-child(10),
 .production-record-table tbody td:nth-child(11),
 .production-record-table tbody td:nth-child(12),
-.production-record-table tbody td:nth-child(14),
+.production-record-table tbody td:nth-child(13),
+.production-record-table tbody td:nth-child(15),
 .production-record-table thead th:nth-child(1),
 .production-record-table thead th:nth-child(2),
-.production-record-table thead th:nth-child(5),
+.production-record-table thead th:nth-child(3),
 .production-record-table thead th:nth-child(6),
 .production-record-table thead th:nth-child(7),
 .production-record-table thead th:nth-child(8),
@@ -441,7 +445,8 @@ footer{text-align:center;color:#6c757d;margin:18px 0;padding:12px 0;margin-top:a
 .production-record-table thead th:nth-child(10),
 .production-record-table thead th:nth-child(11),
 .production-record-table thead th:nth-child(12),
-.production-record-table thead th:nth-child(14){
+.production-record-table thead th:nth-child(13),
+.production-record-table thead th:nth-child(15){
   text-align:center;
 }
 .production-record-table tbody td:nth-child(2){
