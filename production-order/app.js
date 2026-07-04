@@ -4,6 +4,7 @@
   const API_BASE = (isLocal && isStaticDev) ? 'http://localhost:5013' : '';
   const STORAGE_KEY = 'production-order-ui-v8';
   const ITEM_COUNT = 6;
+  const STOCK_CARD_GAP = 10;
 
   const FALLBACK_THICKNESS_OPTIONS = ['0.3', '0.4', '0.4D', '0.5', '0.6', '0.8', '0.8A', '1.0', '1.2', '1.5', '3.0'];
   const NOT_FOUND_CODE = '暫時未搵到產品編碼';
@@ -234,12 +235,30 @@
   function resetStockCardAlignment() {
     if (!stockCheckItems) return;
     stockCheckItems.classList.remove('is-aligned');
+    stockCheckItems.style.top = '';
+    stockCheckItems.style.left = '';
+    stockCheckItems.style.width = '';
     stockCheckItems.style.height = '';
     stockCheckItems.style.marginTop = '';
     stockCheckItems.querySelectorAll('.stock-check-slot').forEach((slot) => {
       slot.style.top = '';
       slot.style.height = '';
     });
+  }
+
+  function applyStockSlotPositions() {
+    if (!stockCheckItems?.classList.contains('is-aligned')) return;
+    const containerRect = stockCheckItems.getBoundingClientRect();
+    for (let n = 1; n <= ITEM_COUNT; n += 1) {
+      const block = getItemBlockRows(n);
+      const slot = stockCheckItems.querySelector(`[data-item="${n}"]`);
+      if (!block || !slot) continue;
+      const blockTop = block.first.getBoundingClientRect().top;
+      const blockBottom = block.last.getBoundingClientRect().bottom;
+      const blockHeight = blockBottom - blockTop;
+      slot.style.top = `${blockTop - containerRect.top + STOCK_CARD_GAP / 2}px`;
+      slot.style.height = `${Math.max(0, blockHeight - STOCK_CARD_GAP)}px`;
+    }
   }
 
   function syncStockCardAlignment() {
@@ -249,30 +268,24 @@
       return;
     }
 
-    const titleEl = stockCheckItems.closest('.stock-check-panel')?.querySelector('.stock-check-panel__title');
+    const workspace = document.querySelector('.pos-workspace');
     const block1 = getItemBlockRows(1);
     const blockLast = getItemBlockRows(ITEM_COUNT);
-    if (!titleEl || !block1 || !blockLast) return;
+    if (!workspace || !block1 || !blockLast) return;
 
+    const wsRect = workspace.getBoundingClientRect();
     const productTop = block1.first.getBoundingClientRect().top;
     const productBottom = blockLast.last.getBoundingClientRect().bottom;
-    const titleBottom = titleEl.getBoundingClientRect().bottom;
 
     stockCheckItems.classList.add('is-aligned');
-    stockCheckItems.style.marginTop = `${Math.max(0, productTop - titleBottom)}px`;
+    stockCheckItems.style.top = `${productTop - wsRect.top}px`;
     stockCheckItems.style.height = `${productBottom - productTop}px`;
 
-    for (let n = 1; n <= ITEM_COUNT; n += 1) {
-      const block = getItemBlockRows(n);
-      const slot = stockCheckItems.querySelector(`[data-item="${n}"]`);
-      if (!block || !slot) continue;
-      const blockRect = block.first.getBoundingClientRect();
-      const blockEnd = block.last.getBoundingClientRect().bottom;
-      const top = blockRect.top - productTop;
-      const height = blockEnd - blockRect.top;
-      slot.style.top = `${top}px`;
-      slot.style.height = `${height}px`;
-    }
+    applyStockSlotPositions();
+    requestAnimationFrame(() => {
+      applyStockSlotPositions();
+      requestAnimationFrame(applyStockSlotPositions);
+    });
   }
 
   function scheduleStockCardAlignment() {
@@ -286,11 +299,17 @@
   function bindStockCardAlignment() {
     window.addEventListener('resize', scheduleStockCardAlignment);
     window.addEventListener('load', scheduleStockCardAlignment);
+    document.fonts?.ready?.then(scheduleStockCardAlignment);
 
-    const a4Sheet = document.querySelector('.a4-sheet');
-    if (a4Sheet && typeof ResizeObserver !== 'undefined') {
+    const observeTargets = [
+      document.querySelector('.a4-sheet'),
+      document.querySelector('.pos-product'),
+      productItemsBody,
+    ].filter(Boolean);
+
+    if (typeof ResizeObserver !== 'undefined') {
       stockAlignObserver = new ResizeObserver(scheduleStockCardAlignment);
-      stockAlignObserver.observe(a4Sheet);
+      observeTargets.forEach((el) => stockAlignObserver.observe(el));
     }
   }
 
