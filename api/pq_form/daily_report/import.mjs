@@ -7,6 +7,7 @@ import {
 import {
   buildImportRecordsFromDailyTab,
   collectExistingDailyReportLinks,
+  repairImportedProductNamesForTab,
   scanDailyReportTab,
 } from '../../../lib/dailyReportImport.js';
 
@@ -44,7 +45,20 @@ export default async function handler(req, res) {
     }
 
     const preview = body?.preview === true;
+    const repair = body?.repair === true;
     const supabase = getSupabaseAdmin();
+
+    if (repair) {
+      const { recordDateIso, repaired, skipped } = await repairImportedProductNamesForTab(tabName, supabase);
+      return res.status(200).json({
+        success: true,
+        repair: true,
+        tabName,
+        recordDateIso,
+        repaired,
+        skipped,
+      });
+    }
 
     const scanned = await scanDailyReportTab(tabName);
     let existingLinks = new Set();
