@@ -450,7 +450,6 @@
     if (stock.available !== null && stock.available !== undefined) {
       parts.push(`Avail ${escapeHtml(formatStockQuantity(stock.available, stock.unit))}`);
     }
-    if (stock.category) parts.push(`🏷️ ${escapeHtml(stock.category)}`);
     return parts.join(' | ');
   }
 
