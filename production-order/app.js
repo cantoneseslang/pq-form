@@ -741,11 +741,12 @@
   function syncMaterialQtyHighlight(itemNo, { status = '', hasComparison = false } = {}) {
     const row = getItemRow(itemNo);
     const qtyInput = row ? getField(row, 'quantity') : null;
-    if (!qtyInput) return;
-    qtyInput.classList.remove('material-qty--ok', 'material-qty--short');
+    const qtyCell = qtyInput?.closest('.pos-qty');
+    if (!qtyCell) return;
+    qtyCell.classList.remove('material-qty--ok', 'material-qty--short');
     if (!hasComparison) return;
-    if (status === 'ok') qtyInput.classList.add('material-qty--ok');
-    else if (status === 'short') qtyInput.classList.add('material-qty--short');
+    if (status === 'ok') qtyCell.classList.add('material-qty--ok');
+    else if (status === 'short') qtyCell.classList.add('material-qty--short');
   }
 
   function renderMaterialStockCardSlot(itemNo, state, payload = {}) {

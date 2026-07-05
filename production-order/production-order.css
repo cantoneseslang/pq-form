@@ -754,6 +754,21 @@ body {
   background-size: 10px 6px;
 }
 
+.pos-qty.material-qty--ok {
+  background-color: #d4edda;
+}
+
+.pos-qty.material-qty--short {
+  background-color: #f8d7da;
+}
+
+.pos-qty.material-qty--ok .cell-input--qty,
+.pos-qty.material-qty--short .cell-input--qty {
+  color: inherit;
+  font-weight: 700;
+  background-color: transparent;
+}
+
 .cell-input--qty {
   width: 2.5em;
   max-width: 2.8em;
@@ -763,16 +778,6 @@ body {
   font-weight: 400;
   font-size: 10pt;
   flex: 0 0 auto;
-}
-
-.cell-input--qty.material-qty--ok {
-  color: #2e7d32;
-  font-weight: 700;
-}
-
-.cell-input--qty.material-qty--short {
-  color: #c62828;
-  font-weight: 700;
 }
 
 .cell-input.product-not-found {
