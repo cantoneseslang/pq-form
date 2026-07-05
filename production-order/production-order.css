@@ -261,6 +261,21 @@ body {
   line-height: 1.45;
 }
 
+.stock-card__avail--ok {
+  color: #2e7d32;
+  font-weight: 700;
+}
+
+.stock-card__avail--partial {
+  color: #e65100;
+  font-weight: 700;
+}
+
+.stock-card__avail--short {
+  color: #c62828;
+  font-weight: 700;
+}
+
 .stock-card--empty {
   display: flex;
   align-items: center;

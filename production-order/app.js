@@ -461,7 +461,7 @@
     return `${value}${unit || ''}`;
   }
 
-  function buildStockDetailsHtml(stock) {
+  function buildStockDetailsHtml(stock, itemNo) {
     const parts = [];
     if (stock.onHand !== null && stock.onHand !== undefined) {
       parts.push(`OH ${escapeHtml(formatStockQuantity(stock.onHand, stock.unit))}`);
@@ -470,7 +470,16 @@
       parts.push(`w/o ${escapeHtml(formatStockQuantity(stock.withoutDn, stock.unit))}`);
     }
     if (stock.available !== null && stock.available !== undefined) {
-      parts.push(`Avail ${escapeHtml(formatStockQuantity(stock.available, stock.unit))}`);
+      const availText = `Avail ${escapeHtml(formatStockQuantity(stock.available, stock.unit))}`;
+      const { status, hasComparison } = getQtyHighlightForItem(itemNo);
+      const availClass = hasComparison
+        ? (status === 'ok' ? 'stock-card__avail--ok'
+          : status === 'partial' ? 'stock-card__avail--partial'
+            : status === 'short' ? 'stock-card__avail--short' : '')
+        : '';
+      parts.push(availClass
+        ? `<span class="stock-card__avail ${availClass}">${availText}</span>`
+        : availText);
     }
     return parts.join(' | ');
   }
@@ -512,7 +521,7 @@
         <div class="stock-card${negativeClass}">
           <div class="stock-card__code">產品編碼 | ${escapeHtml(stock.code || code)}</div>
           <div class="stock-card__name">${escapeHtml(stock.name || name)}</div>
-          <div class="stock-card__details">${buildStockDetailsHtml(stock)}</div>
+          <div class="stock-card__details">${buildStockDetailsHtml(stock, itemNo)}</div>
         </div>`;
     }
 
@@ -766,18 +775,35 @@
     return { status: 'short', hasComparison: true };
   }
 
-  function refreshQtyHighlight(itemNo) {
+  function getQtyHighlightForItem(itemNo) {
     const row = getItemRow(itemNo);
-    if (!row) return;
+    if (!row) return { status: '', hasComparison: false };
     const requestedQty = getField(row, 'quantity')?.value.trim() || '';
     const productAvail = getProductAvailForItem(itemNo);
     const producibleQty = materialProducibleByItem.get(itemNo);
-    const { status, hasComparison } = resolveQtyHighlightStatus({
+    return resolveQtyHighlightStatus({
       requestedQty,
       productAvail,
       producibleQty: producibleQty ?? null,
     });
+  }
+
+  function refreshStockCardAvailDisplay(itemNo) {
+    const slot = stockCheckItems?.querySelector(`[data-item="${itemNo}"]`);
+    const details = slot?.querySelector('.stock-card__details');
+    if (!details) return;
+    const row = getItemRow(itemNo);
+    const code = getField(row, 'productCode')?.value.trim() || '';
+    if (!code || code === NOT_FOUND_CODE || !stockByCode) return;
+    const stock = stockByCode[code.toUpperCase()];
+    if (!stock) return;
+    details.innerHTML = buildStockDetailsHtml(stock, itemNo);
+  }
+
+  function refreshQtyHighlight(itemNo) {
+    const { status, hasComparison } = getQtyHighlightForItem(itemNo);
     syncQtyHighlight(itemNo, { status, hasComparison });
+    refreshStockCardAvailDisplay(itemNo);
   }
 
   function syncQtyHighlight(itemNo, { status = '', hasComparison = false } = {}) {
