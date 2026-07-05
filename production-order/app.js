@@ -788,6 +788,32 @@
     });
   }
 
+  const AVAIL_HIGHLIGHT_CLASSES = [
+    'stock-card__avail--ok',
+    'stock-card__avail--partial',
+    'stock-card__avail--short',
+  ];
+
+  function applyAvailHighlightToDetails(details, itemNo, stock) {
+    const { status, hasComparison } = getQtyHighlightForItem(itemNo);
+    let availEl = details.querySelector('.stock-card__avail');
+
+    if (!availEl) {
+      details.innerHTML = buildStockDetailsHtml(stock, itemNo);
+      return;
+    }
+
+    availEl.classList.remove(...AVAIL_HIGHLIGHT_CLASSES);
+    if (!hasComparison) {
+      availEl.replaceWith(document.createTextNode(availEl.textContent));
+      return;
+    }
+
+    if (status === 'ok') availEl.classList.add('stock-card__avail--ok');
+    else if (status === 'partial') availEl.classList.add('stock-card__avail--partial');
+    else if (status === 'short') availEl.classList.add('stock-card__avail--short');
+  }
+
   function refreshStockCardAvailDisplay(itemNo) {
     const slot = stockCheckItems?.querySelector(`[data-item="${itemNo}"]`);
     const details = slot?.querySelector('.stock-card__details');
@@ -797,7 +823,7 @@
     if (!code || code === NOT_FOUND_CODE || !stockByCode) return;
     const stock = stockByCode[code.toUpperCase()];
     if (!stock) return;
-    details.innerHTML = buildStockDetailsHtml(stock, itemNo);
+    applyAvailHighlightToDetails(details, itemNo, stock);
   }
 
   function refreshQtyHighlight(itemNo) {
@@ -1287,6 +1313,9 @@
           scheduleResolveProduct(itemNo);
         }
         if (materialStockFields.includes(e.target.dataset.field)) {
+          if (e.target.dataset.field === 'quantity') {
+            refreshQtyHighlight(itemNo);
+          }
           scheduleMaterialStockUpdate(itemNo);
         }
         return;
@@ -1307,6 +1336,9 @@
         scheduleResolveProduct(itemNo);
       }
       if (materialStockFields.includes(e.target.dataset.field)) {
+        if (e.target.dataset.field === 'quantity') {
+          refreshQtyHighlight(itemNo);
+        }
         scheduleMaterialStockUpdate(itemNo);
       }
     });
