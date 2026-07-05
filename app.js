@@ -45,6 +45,7 @@
     const upper = formatted.toUpperCase();
     if (upper === '0.8A') return '0.8';
     if (upper === '0.4D') return '0.4';
+    if (upper === '1.0A') return '1.0';
     return formatted;
   }
 
@@ -3208,12 +3209,16 @@
 
   async function importFromDailyReportTab() {
     const tabName = getDailyReportTabNameFromForm();
+    const month = String(document.getElementById('month')?.value || '').trim();
+    const year = String(document.getElementById('year')?.value || '').trim();
     if (!tabName) {
       showProductionRecordMessage('請先在表單設定日期（日）', 'error');
       return;
     }
+    const monthLabel = month ? `${month}月` : '預設（6月）';
+    const yearLabel = year ? `${year}年` : '預設（2026）';
     const ok = window.confirm(
-      `從生產日報「${tabName}」日分取込到生產紀錄？\n材料單號需事後補填；已取込列會略過。`,
+      `從生產日報「${yearLabel}${monthLabel} ${tabName}」日分取込到生產紀錄？\n材料單號需事後補填；已取込列會略過。`,
     );
     if (!ok) return;
 
@@ -3223,7 +3228,7 @@
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         cache: 'no-store',
-        body: JSON.stringify({ tabName }),
+        body: JSON.stringify({ tabName, month: month || undefined, year: year || undefined }),
       });
       const data = await res.json();
       if (!data.success) {

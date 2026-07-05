@@ -6,7 +6,7 @@
   const ITEM_COUNT = 6;
   const STOCK_CARD_GAP = 10;
 
-  const FALLBACK_THICKNESS_OPTIONS = ['0.3', '0.4', '0.4D', '0.5', '0.6', '0.8', '0.8A', '1.0', '1.2', '1.5', '3.0'];
+  const FALLBACK_THICKNESS_OPTIONS = ['0.3', '0.4', '0.4D', '0.5', '0.6', '0.8', '0.8A', '1.0', '1.0A', '1.2', '1.5', '3.0'];
   const NOT_FOUND_CODE = '暫時未搵到產品編碼';
   const NOT_FOUND_NAME = '暫時未搵到產品名稱';
 
@@ -43,6 +43,7 @@
     const t = formatThicknessValue(value);
     if (t === '0.8A') return '0.8';
     if (t === '0.4D') return '0.4';
+    if (t === '1.0A') return '1.0';
     return t;
   }
 
@@ -1064,7 +1065,17 @@
 
       if (data.matches.length === 1) {
         const match = data.matches[0];
+        if (data.typeAdjusted && data.resolvedType) {
+          const typeSelect = getField(row, 'productType');
+          if (typeSelect && typeSelect.value !== data.resolvedType) {
+            typeSelect.value = data.resolvedType;
+            updateFieldFillState(typeSelect);
+          }
+        }
         setProductOutputs(row, match.code, displayName(match.name), false, match.materialWidth || '');
+        if (data.hint && data.hintType === 'type_adjusted') {
+          showProductResolveHint(`項目 ${itemNo}：${data.hint}`, false);
+        }
         persistLocal();
       } else if (data.matches.length > 1) {
         codeInput.value = '';
@@ -1074,6 +1085,13 @@
         nameInput.classList.remove('product-not-found');
         updateStockCardForItem(itemNo);
         showProductMatchPicker(itemNo, data.matches, (match) => {
+          if (data.typeAdjusted && data.resolvedType) {
+            const typeSelect = getField(row, 'productType');
+            if (typeSelect) {
+              typeSelect.value = data.resolvedType;
+              updateFieldFillState(typeSelect);
+            }
+          }
           setProductOutputs(row, match.code, displayName(match.name), false, match.materialWidth || '');
           persistLocal();
         });
