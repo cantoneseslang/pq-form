@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MaterialStock 原材料盤點表</title>
+  <link rel="icon" href="../logo.png" type="image/png" />
+  <link rel="stylesheet" href="material-stock-take.css?v=8" />
+</head>
+<body>
+  <main class="mst-page">
+    <div class="mst-brand">
+      <img class="mst-brand__logo" src="../logo.png" alt="KIRII" />
+      <p class="mst-brand__title">MaterialStock 原材料盤點表</p>
+    </div>
+
+    <h1 class="mst-report-title">Material Stock Summary Report</h1>
+
+    <div class="mst-meta">
+      <div class="mst-meta__row">
+        <span>Date：<span id="fetchedDate">—</span></span>
+      </div>
+      <div class="mst-meta__row">
+        <span>Time：<span id="fetchedTime">—</span></span>
+      </div>
+      <div class="mst-meta__row">
+        <span>批數：<span id="totalLots">—</span></span>
+        <span>全公司庫存數量(kg)：<span id="totalKg" class="mst-meta__value--emphasis">—</span></span>
+      </div>
+      <div class="mst-meta__row">
+        <span class="mst-age-stat mst-age-stat--fresh">1-365日：<span id="ageKg365">—</span> kg</span>
+        <span class="mst-age-stat mst-age-stat--medium">366日-730日：<span id="ageKg730">—</span> kg</span>
+        <span class="mst-age-stat mst-age-stat--old">731日&lt;：<span id="ageKg731">—</span> kg</span>
+      </div>
+      <div class="mst-meta__row">
+        <span>來源 原日常Excel表：<span id="sourceSheetId">—</span></span>
+      </div>
+    </div>
+
+    <div class="mst-toolbar no-print">
+      <button id="printBtn" class="mst-btn mst-btn--print" type="button">Print / 印刷</button>
+    </div>
+
+    <div id="loadingMsg" class="mst-loading">載入中…</div>
+    <div id="errorMsg" class="mst-error" hidden></div>
+
+    <div class="mst-table-wrap">
+      <table id="stockTable" class="mst-table" aria-label="原材料盤點表">
+        <thead>
+          <tr class="mst-table__head-row1">
+            <th rowspan="2">tabTitle</th>
+            <th rowspan="2">materialWidthMm</th>
+            <th colspan="4">Quantity (Detail)</th>
+            <th rowspan="2">Adjust</th>
+          </tr>
+          <tr class="mst-table__head-row2">
+            <th>receiptDate</th>
+            <th>lotNo</th>
+            <th>weight</th>
+            <th>remainingRolls</th>
+          </tr>
+        </thead>
+        <tbody id="stockBody"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <script src="app.js?v=7"></script>
+</body>
+</html>
