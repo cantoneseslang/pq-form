@@ -24,6 +24,7 @@
   let activeResolveItem = null;
   const resolveTimers = new Map();
   const materialStockTimers = new Map();
+  const materialProducibleByItem = new Map();
   let stockByCode = null;
   let materialStockData = null;
   let materialStockLoadPromise = null;
@@ -540,11 +541,13 @@
 
     if (!code && !name) {
       renderStockCardSlot(itemNo, 'empty');
+      refreshQtyHighlight(itemNo);
       return;
     }
 
     if (!code || code === NOT_FOUND_CODE) {
       renderStockCardSlot(itemNo, 'plist-miss', { code, name });
+      refreshQtyHighlight(itemNo);
       return;
     }
 
@@ -554,10 +557,12 @@
     const stock = data[code.toUpperCase()] || null;
     if (!stock) {
       renderStockCardSlot(itemNo, 'not-found', { code, name });
+      refreshQtyHighlight(itemNo);
       return;
     }
 
     renderStockCardSlot(itemNo, 'ready', { code, name, stock });
+    refreshQtyHighlight(itemNo);
   }
 
   function syncAllMaterialStockCards() {
@@ -738,14 +743,52 @@
     return `<ul class="stock-card__lots">${items}</ul>`;
   }
 
-  function syncMaterialQtyHighlight(itemNo, { status = '', hasComparison = false } = {}) {
+  function getProductAvailForItem(itemNo) {
+    const row = getItemRow(itemNo);
+    const code = getField(row, 'productCode')?.value.trim() || '';
+    if (!code || code === NOT_FOUND_CODE || !stockByCode) return 0;
+    const stock = stockByCode[code.toUpperCase()];
+    if (!stock || stock.available === null || stock.available === undefined) return 0;
+    const avail = parsePositiveNumber(stock.available);
+    return avail !== null ? avail : 0;
+  }
+
+  function resolveQtyHighlightStatus({ requestedQty, productAvail, producibleQty }) {
+    const req = parsePositiveNumber(requestedQty);
+    if (!req) return { status: '', hasComparison: false };
+
+    const avail = Number.isFinite(productAvail) ? productAvail : 0;
+    if (avail >= req) return { status: 'ok', hasComparison: true };
+
+    const shortfall = req - avail;
+    const prod = parsePositiveNumber(producibleQty);
+    if (prod !== null && prod >= shortfall) return { status: 'partial', hasComparison: true };
+    return { status: 'short', hasComparison: true };
+  }
+
+  function refreshQtyHighlight(itemNo) {
+    const row = getItemRow(itemNo);
+    if (!row) return;
+    const requestedQty = getField(row, 'quantity')?.value.trim() || '';
+    const productAvail = getProductAvailForItem(itemNo);
+    const producibleQty = materialProducibleByItem.get(itemNo);
+    const { status, hasComparison } = resolveQtyHighlightStatus({
+      requestedQty,
+      productAvail,
+      producibleQty: producibleQty ?? null,
+    });
+    syncQtyHighlight(itemNo, { status, hasComparison });
+  }
+
+  function syncQtyHighlight(itemNo, { status = '', hasComparison = false } = {}) {
     const row = getItemRow(itemNo);
     const qtyInput = row ? getField(row, 'quantity') : null;
     const qtyCell = qtyInput?.closest('.pos-qty');
     if (!qtyCell) return;
-    qtyCell.classList.remove('material-qty--ok', 'material-qty--short');
+    qtyCell.classList.remove('material-qty--ok', 'material-qty--partial', 'material-qty--short');
     if (!hasComparison) return;
     if (status === 'ok') qtyCell.classList.add('material-qty--ok');
+    else if (status === 'partial') qtyCell.classList.add('material-qty--partial');
     else if (status === 'short') qtyCell.classList.add('material-qty--short');
   }
 
@@ -764,7 +807,6 @@
     let cardHtml = '';
 
     if (state === 'empty') {
-      syncMaterialQtyHighlight(itemNo);
       cardHtml = `
         <div class="stock-card stock-card--material stock-card--empty">
           <div class="stock-card__placeholder">項目 ${itemNo}<br />輸入規格後顯示材料在庫</div>
@@ -775,14 +817,12 @@
           <div class="stock-card__placeholder">項目 ${itemNo}<br />材料在庫載入中…</div>
         </div>`;
     } else if (state === 'no-mw') {
-      syncMaterialQtyHighlight(itemNo);
       cardHtml = `
         <div class="stock-card stock-card--material stock-card--not-found">
           <div class="stock-card__code">材料在庫 | ${escapeHtml(label || '規格未齊')}</div>
           <div class="stock-card__details">用料闊度未設定</div>
         </div>`;
     } else if (state === 'error') {
-      syncMaterialQtyHighlight(itemNo);
       const message = payload.error || '材料在庫 API 錯誤';
       cardHtml = `
         <div class="stock-card stock-card--material stock-card--error">
@@ -790,20 +830,12 @@
           <div class="stock-card__details">${escapeHtml(message)}</div>
         </div>`;
     } else if (state === 'not-found') {
-      syncMaterialQtyHighlight(itemNo);
       cardHtml = `
         <div class="stock-card stock-card--material stock-card--not-found">
           <div class="stock-card__code">材料在庫 | ${escapeHtml(label)}</div>
           <div class="stock-card__details">此厚度+材料闊度無庫存</div>
         </div>`;
     } else if (state === 'ready' && stock) {
-      const hasComparison = Boolean(requestedQty)
-        && yieldInfo?.producibleQty !== null
-        && yieldInfo?.producibleQty !== undefined;
-      syncMaterialQtyHighlight(itemNo, {
-        status: yieldInfo?.status,
-        hasComparison,
-      });
       cardHtml = `
         <div class="stock-card stock-card--material">
           <div class="stock-card__code">材料在庫 | ${escapeHtml(label)}</div>
@@ -840,12 +872,16 @@
     const requestedQty = getField(row, 'quantity')?.value.trim() || '';
 
     if (!thickness && !materialWidth) {
+      materialProducibleByItem.delete(itemNo);
       renderMaterialStockCardSlot(itemNo, 'empty');
+      refreshQtyHighlight(itemNo);
       return;
     }
 
     if (!materialWidth) {
+      materialProducibleByItem.delete(itemNo);
       renderMaterialStockCardSlot(itemNo, 'no-mw', { thickness });
+      refreshQtyHighlight(itemNo);
       return;
     }
 
@@ -860,7 +896,9 @@
       });
 
       if (!stock) {
+        materialProducibleByItem.set(itemNo, 0);
         renderMaterialStockCardSlot(itemNo, 'not-found', { thickness, materialWidth });
+        refreshQtyHighlight(itemNo);
         return;
       }
 
@@ -870,6 +908,7 @@
         materialWidthMm: stock.materialWidth,
         thicknessMm: thickness,
       });
+      materialProducibleByItem.set(itemNo, producibleQty ?? 0);
       const yieldInfo = {
         producibleQty,
         status: materialAvailabilityStatus({ requestedQty, producibleQty }),
@@ -882,6 +921,7 @@
         yieldInfo,
         requestedQty,
       });
+      refreshQtyHighlight(itemNo);
     } catch (error) {
       console.error('updateMaterialStockCardForItem failed', error);
       renderMaterialStockCardSlot(itemNo, 'error', {
@@ -889,6 +929,7 @@
         materialWidth,
         error: error?.message || '材料在庫載入失敗',
       });
+      refreshQtyHighlight(itemNo);
     }
   }
 

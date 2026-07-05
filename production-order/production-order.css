@@ -758,11 +758,16 @@ body {
   background-color: #d4edda;
 }
 
+.pos-qty.material-qty--partial {
+  background-color: #ffe0b2;
+}
+
 .pos-qty.material-qty--short {
   background-color: #f8d7da;
 }
 
 .pos-qty.material-qty--ok .cell-input--qty,
+.pos-qty.material-qty--partial .cell-input--qty,
 .pos-qty.material-qty--short .cell-input--qty {
   color: inherit;
   font-weight: 700;
