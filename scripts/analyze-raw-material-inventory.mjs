@@ -46,9 +46,7 @@ try {
     console.log('Stats:', report.stats);
     console.log('Errors:', report.access.errors);
     for (const tr of report.tabReports) {
-      console.log(`\n[${tr.tabTitle}] lots=${tr.lotCount} apAy=${tr.apAy.interpretation}`);
-      console.log('  AP-AY headers:', tr.apAy.headers.join(' | '));
-      console.log('  AP-AY non-empty:', tr.apAy.nonEmptyCounts.join(', '));
+      console.log(`\n[${tr.tabTitle}] lots=${tr.lotCount} source=${tr.inventorySource}`);
     }
     console.log('\nTop summaries (by kg):');
     const top = [...report.summaries].sort((a, b) => b.totalKg - a.totalKg).slice(0, 15);
