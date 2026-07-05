@@ -12,18 +12,31 @@ import {
 
 export const config = { runtime: 'nodejs' };
 
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_TTL_MS = 10 * 60 * 1000;
 let cachedStock = null;
 let cachedAt = 0;
+let pendingFetch = null;
 
 async function getStockData() {
   const now = Date.now();
   if (cachedStock && now - cachedAt < CACHE_TTL_MS) {
     return cachedStock;
   }
-  cachedStock = await fetchMaterialStockMap();
-  cachedAt = now;
-  return cachedStock;
+  if (pendingFetch) return pendingFetch;
+
+  pendingFetch = fetchMaterialStockMap()
+    .then((data) => {
+      cachedStock = data;
+      cachedAt = Date.now();
+      pendingFetch = null;
+      return cachedStock;
+    })
+    .catch((error) => {
+      pendingFetch = null;
+      throw error;
+    });
+
+  return pendingFetch;
 }
 
 export default async function handler(req, res) {

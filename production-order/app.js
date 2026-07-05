@@ -25,6 +25,8 @@
   const resolveTimers = new Map();
   const materialStockTimers = new Map();
   let stockByCode = null;
+  let materialStockData = null;
+  let materialStockLoadPromise = null;
   let stockAlignFrame = null;
   let stockAlignObserver = null;
 
@@ -573,6 +575,121 @@
     });
   }
 
+  const MATERIAL_STEEL_DENSITY = 7.85;
+
+  const THICKNESS_TAB_CANDIDATES = {
+    '0.8A': ['0.8-A mm'],
+    '0.4D': ['0.4mm (B)'],
+    '0.4B': ['0.4mm (B)'],
+    '0.4W': ['0.4mm (W)'],
+    '0.4AL': ['0.4mm (Aluminium)'],
+    '0.8C': ['0.8mm C (Z-120)'],
+    '0.3': ['0.3mm'],
+    '0.4': ['0.4mm'],
+    '0.45': ['0.45mm'],
+    '0.5': ['0.5mm'],
+    '0.6': ['0.6mm', '0.6mm ASTM (G90)'],
+    '0.8': ['0.8mm', '0.8mm (B)', '0.8mm ASTM (G90)'],
+    '1.0': ['1.0mm', '1.0mm ASTM (G90)'],
+    '1.2': ['1.2mm', '1.2mm (Z-275 or G90)'],
+    '1.5': ['1.5mm', '1.5mm ASTM (G90)'],
+    '3.0': ['3.0mm'],
+  };
+
+  function normalizeMaterialWidthValue(value) {
+    const text = String(value ?? '').trim();
+    if (!text) return '';
+    const num = parseFloat(text.replace(/mm$/i, ''));
+    return Number.isFinite(num) ? String(num) : text;
+  }
+
+  function thicknessTabCandidates(thickness) {
+    const key = String(thickness ?? '').trim().toUpperCase();
+    if (THICKNESS_TAB_CANDIDATES[key]) return THICKNESS_TAB_CANDIDATES[key];
+    const num = parseFloat(key);
+    return Number.isFinite(num) ? [`${num}mm`] : [];
+  }
+
+  function parsePositiveNumber(value) {
+    const text = String(value ?? '').replace(/,/g, '').trim();
+    if (!text) return null;
+    const num = parseFloat(text);
+    return Number.isFinite(num) && num > 0 ? num : null;
+  }
+
+  function calcPieceWeightKg({ lengthMm, materialWidthMm, thicknessMm, densityGcm3 = MATERIAL_STEEL_DENSITY }) {
+    const length = parsePositiveNumber(lengthMm);
+    const width = parsePositiveNumber(materialWidthMm);
+    const thickness = parsePositiveNumber(thicknessMm);
+    if (!length || !width || !thickness) return null;
+    return (length * width * thickness * densityGcm3) / 1_000_000;
+  }
+
+  function calcProduciblePieces({ availableKg, lengthMm, materialWidthMm, thicknessMm }) {
+    const kg = parsePositiveNumber(availableKg);
+    const pieceKg = calcPieceWeightKg({ lengthMm, materialWidthMm, thicknessMm });
+    if (!kg || !pieceKg) return null;
+    return Math.floor(kg / pieceKg);
+  }
+
+  function materialAvailabilityStatus({ requestedQty, producibleQty }) {
+    const req = parsePositiveNumber(requestedQty);
+    const prod = parsePositiveNumber(producibleQty);
+    if (!req || prod === null) return 'unknown';
+    return prod >= req ? 'ok' : 'short';
+  }
+
+  function lookupLocalMaterialStock({ byTab, thickness, materialWidth }) {
+    const mw = normalizeMaterialWidthValue(materialWidth);
+    if (!mw || !byTab) return null;
+
+    const candidates = thicknessTabCandidates(thickness);
+    let totalKg = 0;
+    let totalRolls = 0;
+    const lots = [];
+    const matchedTabs = [];
+
+    for (const tabTitle of candidates) {
+      const key = `${tabTitle}|${mw}`;
+      const hit = byTab[key];
+      if (!hit) continue;
+      matchedTabs.push(tabTitle);
+      totalKg += hit.totalKg || 0;
+      totalRolls += hit.totalRolls || 0;
+      lots.push(...(hit.lots || []));
+    }
+
+    if (!matchedTabs.length) return null;
+
+    return {
+      thickness: String(thickness ?? '').trim(),
+      materialWidth: mw,
+      tabTitles: matchedTabs,
+      totalKg: Math.round(totalKg * 1000) / 1000,
+      totalRolls,
+      lotCount: lots.length,
+      lots,
+    };
+  }
+
+  async function ensureMaterialStockData() {
+    if (materialStockData) return materialStockData;
+    if (!materialStockLoadPromise) {
+      materialStockLoadPromise = fetch(`${API_BASE}/api/pq_form/material_stock`, { cache: 'no-store' })
+        .then(async (res) => {
+          const json = await res.json();
+          if (!json.success) throw new Error(json.error || '材料在庫 API 錯誤');
+          materialStockData = json;
+          return materialStockData;
+        })
+        .catch((error) => {
+          materialStockLoadPromise = null;
+          throw error;
+        });
+    }
+    return materialStockLoadPromise;
+  }
+
   function formatReceiptDate(value) {
     const text = String(value ?? '').trim();
     const m = text.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
@@ -734,31 +851,34 @@
     renderMaterialStockCardSlot(itemNo, 'loading', { thickness, materialWidth });
 
     try {
-      const params = new URLSearchParams({ thickness, materialWidth });
-      if (length) params.set('length', length);
-      if (requestedQty) params.set('qty', requestedQty);
-      const res = await fetch(`${API_BASE}/api/pq_form/material_stock?${params.toString()}`, { cache: 'no-store' });
-      const json = await res.json();
+      const stockPayload = await ensureMaterialStockData();
+      const stock = lookupLocalMaterialStock({
+        byTab: stockPayload.byTab,
+        thickness,
+        materialWidth,
+      });
 
-      if (!json.success) {
-        renderMaterialStockCardSlot(itemNo, 'error', {
-          thickness,
-          materialWidth,
-          error: json.error || '材料在庫 API 錯誤',
-        });
-        return;
-      }
-
-      if (!json.found) {
+      if (!stock) {
         renderMaterialStockCardSlot(itemNo, 'not-found', { thickness, materialWidth });
         return;
       }
 
+      const producibleQty = calcProduciblePieces({
+        availableKg: stock.totalKg,
+        lengthMm: length,
+        materialWidthMm: stock.materialWidth,
+        thicknessMm: thickness,
+      });
+      const yieldInfo = {
+        producibleQty,
+        status: materialAvailabilityStatus({ requestedQty, producibleQty }),
+      };
+
       renderMaterialStockCardSlot(itemNo, 'ready', {
         thickness,
         materialWidth,
-        stock: json.stock,
-        yieldInfo: json.yield,
+        stock,
+        yieldInfo,
         requestedQty,
       });
     } catch (error) {
@@ -766,7 +886,7 @@
       renderMaterialStockCardSlot(itemNo, 'error', {
         thickness,
         materialWidth,
-        error: '材料在庫載入失敗',
+        error: error?.message || '材料在庫載入失敗',
       });
     }
   }
