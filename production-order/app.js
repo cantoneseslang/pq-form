@@ -18,10 +18,12 @@
   const productMatchPicker = document.getElementById('productMatchPicker');
   const productItemsBody = document.getElementById('productItemsBody');
   const stockCheckItems = document.getElementById('stockCheckItems');
+  const materialCheckItems = document.getElementById('materialCheckItems');
 
   let thicknessOptionsHtml = '';
   let activeResolveItem = null;
   const resolveTimers = new Map();
+  const materialStockTimers = new Map();
   let stockByCode = null;
   let stockAlignFrame = null;
   let stockAlignObserver = null;
@@ -215,6 +217,7 @@
     productItemsBody.innerHTML = rows + footer;
     refreshFieldFillStates(productItemsBody);
     renderStockCheckSlots();
+    renderMaterialCheckSlots();
     scheduleStockCardAlignment();
   }
 
@@ -233,25 +236,27 @@
   }
 
   function resetStockCardAlignment() {
-    if (!stockCheckItems) return;
-    stockCheckItems.classList.remove('is-aligned');
-    stockCheckItems.style.top = '';
-    stockCheckItems.style.left = '';
-    stockCheckItems.style.width = '';
-    stockCheckItems.style.height = '';
-    stockCheckItems.style.marginTop = '';
-    stockCheckItems.querySelectorAll('.stock-check-slot').forEach((slot) => {
-      slot.style.top = '';
-      slot.style.height = '';
+    [stockCheckItems, materialCheckItems].forEach((container) => {
+      if (!container) return;
+      container.classList.remove('is-aligned');
+      container.style.top = '';
+      container.style.left = '';
+      container.style.width = '';
+      container.style.height = '';
+      container.style.marginTop = '';
+      container.querySelectorAll('[data-item]').forEach((slot) => {
+        slot.style.top = '';
+        slot.style.height = '';
+      });
     });
   }
 
-  function applyStockSlotPositions() {
-    if (!stockCheckItems?.classList.contains('is-aligned')) return;
-    const containerRect = stockCheckItems.getBoundingClientRect();
+  function applySlotPositions(container, slotClass) {
+    if (!container?.classList.contains('is-aligned')) return;
+    const containerRect = container.getBoundingClientRect();
     for (let n = 1; n <= ITEM_COUNT; n += 1) {
       const block = getItemBlockRows(n);
-      const slot = stockCheckItems.querySelector(`[data-item="${n}"]`);
+      const slot = container.querySelector(`${slotClass}[data-item="${n}"]`);
       if (!block || !slot) continue;
       const blockTop = block.first.getBoundingClientRect().top;
       const blockBottom = block.last.getBoundingClientRect().bottom;
@@ -259,6 +264,11 @@
       slot.style.top = `${blockTop - containerRect.top + STOCK_CARD_GAP / 2}px`;
       slot.style.height = `${Math.max(0, blockHeight - STOCK_CARD_GAP)}px`;
     }
+  }
+
+  function applyStockSlotPositions() {
+    applySlotPositions(stockCheckItems, '.stock-check-slot');
+    applySlotPositions(materialCheckItems, '.material-check-slot');
   }
 
   function syncStockCardAlignment() {
@@ -276,10 +286,19 @@
     const wsRect = workspace.getBoundingClientRect();
     const productTop = block1.first.getBoundingClientRect().top;
     const productBottom = blockLast.last.getBoundingClientRect().bottom;
+    const alignStyle = {
+      top: `${productTop - wsRect.top}px`,
+      height: `${productBottom - productTop}px`,
+    };
 
-    stockCheckItems.classList.add('is-aligned');
-    stockCheckItems.style.top = `${productTop - wsRect.top}px`;
-    stockCheckItems.style.height = `${productBottom - productTop}px`;
+    if (stockCheckItems) {
+      stockCheckItems.classList.add('is-aligned');
+      Object.assign(stockCheckItems.style, alignStyle);
+    }
+    if (materialCheckItems) {
+      materialCheckItems.classList.add('is-aligned');
+      Object.assign(materialCheckItems.style, alignStyle);
+    }
 
     applyStockSlotPositions();
     requestAnimationFrame(() => {
@@ -539,6 +558,224 @@
     renderStockCardSlot(itemNo, 'ready', { code, name, stock });
   }
 
+  function syncAllMaterialStockCards() {
+    for (let i = 1; i <= ITEM_COUNT; i += 1) {
+      scheduleMaterialStockUpdate(i);
+    }
+  }
+
+  function formatNumber(value, digits = 0) {
+    const num = Number(value);
+    if (!Number.isFinite(num)) return '';
+    return num.toLocaleString('en-HK', {
+      minimumFractionDigits: digits,
+      maximumFractionDigits: digits,
+    });
+  }
+
+  function formatReceiptDate(value) {
+    const text = String(value ?? '').trim();
+    const m = text.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+    if (m) return `${parseInt(m[1], 10)}/${parseInt(m[2], 10)}/${m[3]}`;
+    return text;
+  }
+
+  function receiptDateSortKey(value) {
+    const text = String(value ?? '').trim();
+    const m = text.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+    if (!m) return 0;
+    return new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1])).getTime();
+  }
+
+  function buildMaterialSummaryHtml({ stock, yieldInfo, requestedQty }) {
+    const parts = [];
+    if (stock?.totalKg !== null && stock?.totalKg !== undefined) {
+      parts.push(`${escapeHtml(formatNumber(stock.totalKg, 1))} kg 可用`);
+    }
+    if (stock?.totalRolls) {
+      parts.push(`${escapeHtml(formatNumber(stock.totalRolls))} 卷`);
+    }
+    if (yieldInfo?.producibleQty !== null && yieldInfo?.producibleQty !== undefined) {
+      parts.push(`約 ${escapeHtml(formatNumber(yieldInfo.producibleQty))} 支可製造`);
+    }
+    const hasComparison = Boolean(requestedQty)
+      && yieldInfo?.producibleQty !== null
+      && yieldInfo?.producibleQty !== undefined;
+    const summaryClass = hasComparison
+      ? (yieldInfo?.status === 'short' ? 'stock-card__summary--short' : 'stock-card__summary--ok')
+      : '';
+    return `<div class="stock-card__summary ${summaryClass}">${parts.join(' | ')}</div>`;
+  }
+
+  function buildMaterialLotsHtml(lots = []) {
+    const sorted = [...lots].sort((a, b) => receiptDateSortKey(a.receiptDate) - receiptDateSortKey(b.receiptDate));
+    if (!sorted.length) return '';
+    const items = sorted.map((lot) => {
+      const date = formatReceiptDate(lot.receiptDate);
+      const lotNo = escapeHtml(lot.lotNo || '');
+      const rolls = lot.rolls !== null && lot.rolls !== undefined
+        ? `${escapeHtml(formatNumber(lot.rolls))}卷`
+        : '';
+      return `<li class="stock-card__lot">${escapeHtml(date)}　${lotNo}　${rolls}</li>`;
+    }).join('');
+    return `<ul class="stock-card__lots">${items}</ul>`;
+  }
+
+  function syncMaterialQtyHighlight(itemNo, { status = '', hasComparison = false } = {}) {
+    const row = getItemRow(itemNo);
+    const qtyInput = row ? getField(row, 'quantity') : null;
+    if (!qtyInput) return;
+    qtyInput.classList.remove('material-qty--ok', 'material-qty--short');
+    if (!hasComparison) return;
+    if (status === 'ok') qtyInput.classList.add('material-qty--ok');
+    else if (status === 'short') qtyInput.classList.add('material-qty--short');
+  }
+
+  function renderMaterialStockCardSlot(itemNo, state, payload = {}) {
+    const slot = materialCheckItems?.querySelector(`[data-item="${itemNo}"]`);
+    if (!slot) return;
+
+    const {
+      thickness = '',
+      materialWidth = '',
+      stock = null,
+      yieldInfo = null,
+      requestedQty = '',
+    } = payload;
+    const label = [thickness, materialWidth ? `${materialWidth}mm` : ''].filter(Boolean).join(' × ');
+    let cardHtml = '';
+
+    if (state === 'empty') {
+      syncMaterialQtyHighlight(itemNo);
+      cardHtml = `
+        <div class="stock-card stock-card--material stock-card--empty">
+          <div class="stock-card__placeholder">項目 ${itemNo}<br />輸入規格後顯示材料在庫</div>
+        </div>`;
+    } else if (state === 'loading') {
+      cardHtml = `
+        <div class="stock-card stock-card--material stock-card--loading">
+          <div class="stock-card__placeholder">項目 ${itemNo}<br />材料在庫載入中…</div>
+        </div>`;
+    } else if (state === 'no-mw') {
+      syncMaterialQtyHighlight(itemNo);
+      cardHtml = `
+        <div class="stock-card stock-card--material stock-card--not-found">
+          <div class="stock-card__code">材料在庫 | ${escapeHtml(label || '規格未齊')}</div>
+          <div class="stock-card__details">用料闊度未設定</div>
+        </div>`;
+    } else if (state === 'error') {
+      syncMaterialQtyHighlight(itemNo);
+      const message = payload.error || '材料在庫 API 錯誤';
+      cardHtml = `
+        <div class="stock-card stock-card--material stock-card--error">
+          <div class="stock-card__code">材料在庫 | ${escapeHtml(label || '規格未齊')}</div>
+          <div class="stock-card__details">${escapeHtml(message)}</div>
+        </div>`;
+    } else if (state === 'not-found') {
+      syncMaterialQtyHighlight(itemNo);
+      cardHtml = `
+        <div class="stock-card stock-card--material stock-card--not-found">
+          <div class="stock-card__code">材料在庫 | ${escapeHtml(label)}</div>
+          <div class="stock-card__details">此厚度+材料闊度無庫存</div>
+        </div>`;
+    } else if (state === 'ready' && stock) {
+      const hasComparison = Boolean(requestedQty)
+        && yieldInfo?.producibleQty !== null
+        && yieldInfo?.producibleQty !== undefined;
+      syncMaterialQtyHighlight(itemNo, {
+        status: yieldInfo?.status,
+        hasComparison,
+      });
+      cardHtml = `
+        <div class="stock-card stock-card--material">
+          <div class="stock-card__code">材料在庫 | ${escapeHtml(label)}</div>
+          <div class="stock-card__scroll">
+            ${buildMaterialSummaryHtml({ stock, yieldInfo, requestedQty })}
+            ${buildMaterialLotsHtml(stock.lots)}
+          </div>
+        </div>`;
+    }
+
+    slot.innerHTML = cardHtml;
+    scheduleStockCardAlignment();
+  }
+
+  function renderMaterialCheckSlots() {
+    if (!materialCheckItems) return;
+    materialCheckItems.innerHTML = Array.from({ length: ITEM_COUNT }, (_, i) => {
+      const n = i + 1;
+      return `<div class="material-check-slot" data-item="${n}"></div>`;
+    }).join('');
+    for (let i = 1; i <= ITEM_COUNT; i += 1) {
+      renderMaterialStockCardSlot(i, 'empty');
+    }
+    scheduleStockCardAlignment();
+  }
+
+  async function updateMaterialStockCardForItem(itemNo) {
+    const row = getItemRow(itemNo);
+    if (!row) return;
+
+    const thickness = getField(row, 'thickness')?.value.trim() || '';
+    const materialWidth = getField(row, 'materialWidth')?.value.trim() || '';
+    const length = getField(row, 'length')?.value.trim() || '';
+    const requestedQty = getField(row, 'quantity')?.value.trim() || '';
+
+    if (!thickness && !materialWidth) {
+      renderMaterialStockCardSlot(itemNo, 'empty');
+      return;
+    }
+
+    if (!materialWidth) {
+      renderMaterialStockCardSlot(itemNo, 'no-mw', { thickness });
+      return;
+    }
+
+    renderMaterialStockCardSlot(itemNo, 'loading', { thickness, materialWidth });
+
+    try {
+      const params = new URLSearchParams({ thickness, materialWidth });
+      if (length) params.set('length', length);
+      if (requestedQty) params.set('qty', requestedQty);
+      const res = await fetch(`${API_BASE}/api/pq_form/material_stock?${params.toString()}`, { cache: 'no-store' });
+      const json = await res.json();
+
+      if (!json.success) {
+        renderMaterialStockCardSlot(itemNo, 'error', {
+          thickness,
+          materialWidth,
+          error: json.error || '材料在庫 API 錯誤',
+        });
+        return;
+      }
+
+      if (!json.found) {
+        renderMaterialStockCardSlot(itemNo, 'not-found', { thickness, materialWidth });
+        return;
+      }
+
+      renderMaterialStockCardSlot(itemNo, 'ready', {
+        thickness,
+        materialWidth,
+        stock: json.stock,
+        yieldInfo: json.yield,
+        requestedQty,
+      });
+    } catch (error) {
+      console.error('updateMaterialStockCardForItem failed', error);
+      renderMaterialStockCardSlot(itemNo, 'error', {
+        thickness,
+        materialWidth,
+        error: '材料在庫載入失敗',
+      });
+    }
+  }
+
+  function scheduleMaterialStockUpdate(itemNo) {
+    clearTimeout(materialStockTimers.get(itemNo));
+    materialStockTimers.set(itemNo, setTimeout(() => updateMaterialStockCardForItem(itemNo), 300));
+  }
+
   function syncAllStockCards() {
     for (let i = 1; i <= ITEM_COUNT; i += 1) {
       updateStockCardForItem(i);
@@ -561,14 +798,18 @@
     updateFieldFillState(codeInput);
     updateFieldFillState(nameInput);
     if (row?.dataset?.item) {
-      updateStockCardForItem(Number(row.dataset.item));
+      const itemNo = Number(row.dataset.item);
+      updateStockCardForItem(itemNo);
+      scheduleMaterialStockUpdate(itemNo);
     }
   }
 
   function clearProductOutputs(row) {
     setProductOutputs(row, '', '', false, '');
     if (row?.dataset?.item) {
-      renderStockCardSlot(Number(row.dataset.item), 'empty');
+      const itemNo = Number(row.dataset.item);
+      renderStockCardSlot(itemNo, 'empty');
+      renderMaterialStockCardSlot(itemNo, 'empty');
     }
   }
 
@@ -846,14 +1087,19 @@
 
   function bindEvents() {
     const specFields = ['productType', 'thickness', 'width', 'height', 'length'];
+    const materialStockFields = ['thickness', 'materialWidth', 'length', 'quantity'];
 
     productItemsBody.addEventListener('input', (e) => {
       const row = e.target.closest('tr[data-item]');
       updateFieldFillState(e.target);
       if (row) {
         persistLocal();
+        const itemNo = Number(row.dataset.item);
         if (specFields.includes(e.target.dataset.field)) {
-          scheduleResolveProduct(Number(row.dataset.item));
+          scheduleResolveProduct(itemNo);
+        }
+        if (materialStockFields.includes(e.target.dataset.field)) {
+          scheduleMaterialStockUpdate(itemNo);
         }
         return;
       }
@@ -868,8 +1114,12 @@
       const row = e.target.closest('tr[data-item]');
       if (row || e.target.type === 'checkbox') persistLocal();
       if (!row) return;
+      const itemNo = Number(row.dataset.item);
       if (specFields.includes(e.target.dataset.field)) {
-        scheduleResolveProduct(Number(row.dataset.item));
+        scheduleResolveProduct(itemNo);
+      }
+      if (materialStockFields.includes(e.target.dataset.field)) {
+        scheduleMaterialStockUpdate(itemNo);
       }
     });
 
@@ -891,7 +1141,6 @@
       form.reset();
       for (let i = 1; i <= ITEM_COUNT; i += 1) {
         clearProductOutputs(getItemRow(i));
-        renderStockCardSlot(i, 'empty');
       }
       hideProductMatchPicker();
       showProductResolveHint('');
@@ -942,8 +1191,10 @@
     refreshFieldFillStates();
     bindEvents();
     bindStockCardAlignment();
+    renderMaterialCheckSlots();
     for (let i = 1; i <= ITEM_COUNT; i += 1) scheduleResolveProduct(i);
     syncAllStockCards();
+    syncAllMaterialStockCards();
     scheduleStockCardAlignment();
   }
 
