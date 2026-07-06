@@ -561,27 +561,23 @@
     if (customerSyncLock || !orderingCompanyInput) return;
     const name = orderingCompanyInput.value.trim();
     hideCustomerMatchPicker();
-    if (!name) {
-      hideCustomerCnNameSuggest();
-      return;
-    }
+    hideCustomerCnNameSuggest();
+    if (!name) return;
 
     activeCustomerLookupSource = 'name';
     try {
       const { ok, matches } = await fetchCustomerMatches({ name });
       if (!ok || activeCustomerLookupSource !== 'name') return;
 
-      renderCustomerCnNameSuggest(matches, (match) => {
-        setCustomerFields({ code: match.code, cnName: match.cnName });
-        hideCustomerCnNameSuggest();
-      });
+      if (!matches.length) return;
 
-      if (matches.length === 1) {
-        setCustomerFields({ code: matches[0].code });
-      }
+      showCustomerMatchPicker('訂貨公司候選：', matches, (match) => {
+        setCustomerFields({ code: match.code, cnName: match.cnName });
+        hideCustomerMatchPicker();
+      });
     } catch (error) {
       console.error('customer name lookup failed', error);
-      hideCustomerCnNameSuggest();
+      hideCustomerMatchPicker();
     }
   }
 
