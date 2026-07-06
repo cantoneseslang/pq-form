@@ -1335,9 +1335,15 @@
           persistLocal();
         });
       } else {
-        setProductOutputs(row, '', buildProvisionalProductName(spec.type, spec), false, null);
-        if (data.hint && data.hintType === 'length') {
-          showProductResolveHint(`項目 ${itemNo}：${data.hint}`, false);
+        setProductOutputs(
+          row,
+          NOT_FOUND_CODE,
+          buildProvisionalProductName(spec.type, spec),
+          false,
+          null,
+        );
+        if (data.hint) {
+          showProductResolveHint(`項目 ${itemNo}：${data.hint}`, data.hintType === 'no_spec');
         }
         persistLocal();
       }
