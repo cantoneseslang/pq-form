@@ -19,6 +19,10 @@
   const productItemsBody = document.getElementById('productItemsBody');
   const stockCheckItems = document.getElementById('stockCheckItems');
   const materialCheckItems = document.getElementById('materialCheckItems');
+  const customerNoInput = document.getElementById('customerNo');
+  const orderingCompanyInput = document.getElementById('orderingCompany');
+  const customerCnNameSuggest = document.getElementById('customerCnNameSuggest');
+  const customerMatchPicker = document.getElementById('customerMatchPicker');
 
   let thicknessOptionsHtml = '';
   let activeResolveItem = null;
@@ -446,6 +450,179 @@
     productResolveHint.textContent = text || '';
     productResolveHint.classList.toggle('form-message--error', isError);
     productResolveHint.classList.toggle('form-message--hint', !isError);
+  }
+
+  let customerSyncLock = false;
+  let customerCodeLookupTimer = null;
+  let customerNameLookupTimer = null;
+  let customerNameBlurTimer = null;
+  let activeCustomerLookupSource = null;
+
+  function hideCustomerCnNameSuggest() {
+    if (!customerCnNameSuggest) return;
+    customerCnNameSuggest.hidden = true;
+    customerCnNameSuggest.innerHTML = '';
+  }
+
+  function hideCustomerMatchPicker() {
+    if (!customerMatchPicker) return;
+    customerMatchPicker.hidden = true;
+    customerMatchPicker.innerHTML = '';
+  }
+
+  function setCustomerFields({ code, cnName } = {}, { persist = true } = {}) {
+    if (!customerNoInput || !orderingCompanyInput) return;
+    customerSyncLock = true;
+    try {
+      if (code !== undefined) customerNoInput.value = code;
+      if (cnName !== undefined) orderingCompanyInput.value = cnName;
+      updateFieldFillState(customerNoInput);
+      updateFieldFillState(orderingCompanyInput);
+      if (persist) persistLocal();
+    } finally {
+      customerSyncLock = false;
+    }
+  }
+
+  function showCustomerMatchPicker(label, matches, onPick) {
+    if (!customerMatchPicker) return;
+    customerMatchPicker.innerHTML = `<span class="customer-match-picker__label">${label}</span>`;
+    matches.forEach((match) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = `${match.code} · ${match.cnName}`;
+      btn.addEventListener('click', () => {
+        onPick(match);
+        hideCustomerMatchPicker();
+      });
+      customerMatchPicker.appendChild(btn);
+    });
+    customerMatchPicker.hidden = false;
+  }
+
+  function renderCustomerCnNameSuggest(matches, onPick) {
+    if (!customerCnNameSuggest) return;
+    customerCnNameSuggest.innerHTML = '';
+    if (!matches.length) {
+      hideCustomerCnNameSuggest();
+      return;
+    }
+    matches.forEach((match) => {
+      const li = document.createElement('li');
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = `${match.cnName} (${match.code})`;
+      btn.addEventListener('mousedown', (event) => {
+        event.preventDefault();
+        onPick(match);
+      });
+      li.appendChild(btn);
+      customerCnNameSuggest.appendChild(li);
+    });
+    customerCnNameSuggest.hidden = false;
+  }
+
+  async function fetchCustomerMatches(params) {
+    const qs = new URLSearchParams(params);
+    const res = await fetch(`${API_BASE}/api/pq_form/customers/search?${qs.toString()}`, { cache: 'no-store' });
+    const data = await res.json();
+    if (!data.success) return { ok: false, matches: [], error: data.error || 'lookup failed' };
+    return { ok: true, matches: data.matches || [] };
+  }
+
+  async function resolveCustomerByCode() {
+    if (customerSyncLock || !customerNoInput) return;
+    const code = customerNoInput.value.trim();
+    hideCustomerMatchPicker();
+    if (!code) return;
+
+    activeCustomerLookupSource = 'code';
+    try {
+      const { ok, matches } = await fetchCustomerMatches({ code });
+      if (!ok || activeCustomerLookupSource !== 'code') return;
+
+      if (matches.length === 1) {
+        setCustomerFields({ cnName: matches[0].cnName });
+        hideCustomerCnNameSuggest();
+        return;
+      }
+      if (matches.length > 1) {
+        showCustomerMatchPicker('客戶編號候選：', matches, (match) => {
+          setCustomerFields({ code: match.code, cnName: match.cnName });
+          hideCustomerCnNameSuggest();
+        });
+      }
+    } catch (error) {
+      console.error('customer code lookup failed', error);
+    }
+  }
+
+  async function resolveCustomerByCnName() {
+    if (customerSyncLock || !orderingCompanyInput) return;
+    const name = orderingCompanyInput.value.trim();
+    hideCustomerMatchPicker();
+    if (!name) {
+      hideCustomerCnNameSuggest();
+      return;
+    }
+
+    activeCustomerLookupSource = 'name';
+    try {
+      const { ok, matches } = await fetchCustomerMatches({ name });
+      if (!ok || activeCustomerLookupSource !== 'name') return;
+
+      renderCustomerCnNameSuggest(matches, (match) => {
+        setCustomerFields({ code: match.code, cnName: match.cnName });
+        hideCustomerCnNameSuggest();
+      });
+
+      if (matches.length === 1) {
+        setCustomerFields({ code: matches[0].code });
+      }
+    } catch (error) {
+      console.error('customer name lookup failed', error);
+      hideCustomerCnNameSuggest();
+    }
+  }
+
+  function scheduleCustomerCodeLookup() {
+    if (customerSyncLock) return;
+    clearTimeout(customerCodeLookupTimer);
+    customerCodeLookupTimer = setTimeout(() => resolveCustomerByCode(), 300);
+  }
+
+  function scheduleCustomerNameLookup() {
+    if (customerSyncLock) return;
+    clearTimeout(customerNameLookupTimer);
+    customerNameLookupTimer = setTimeout(() => resolveCustomerByCnName(), 200);
+  }
+
+  function bindCustomerLookupEvents() {
+    if (!customerNoInput || !orderingCompanyInput) return;
+
+    customerNoInput.addEventListener('input', () => {
+      if (customerSyncLock) return;
+      activeCustomerLookupSource = 'code';
+      hideCustomerCnNameSuggest();
+      scheduleCustomerCodeLookup();
+    });
+
+    orderingCompanyInput.addEventListener('input', () => {
+      if (customerSyncLock) return;
+      activeCustomerLookupSource = 'name';
+      hideCustomerMatchPicker();
+      scheduleCustomerNameLookup();
+    });
+
+    orderingCompanyInput.addEventListener('focus', () => {
+      if (customerSyncLock) return;
+      if (orderingCompanyInput.value.trim()) scheduleCustomerNameLookup();
+    });
+
+    orderingCompanyInput.addEventListener('blur', () => {
+      clearTimeout(customerNameBlurTimer);
+      customerNameBlurTimer = setTimeout(() => hideCustomerCnNameSuggest(), 150);
+    });
   }
 
   async function ensureStockData() {
@@ -1425,7 +1602,7 @@
       }
     });
 
-    form.querySelectorAll('#deliveryNoteNoSuffix, #customerNo, #orderingCompany, #deliveryDate, #orderDate, #estimatedProductionPeriod, #completionDate, #personInCharge, #signature, #preparerSignature').forEach((el) => {
+    form.querySelectorAll('#deliveryNoteNoSuffix, #deliveryDate, #orderDate, #estimatedProductionPeriod, #completionDate, #personInCharge, #signature, #preparerSignature').forEach((el) => {
       const handler = () => {
         if (el.id === 'deliveryNoteNoSuffix') normalizeDeliveryNoteSuffixInput();
         if (el.id === 'deliveryDate' || el.id === 'orderDate') {
@@ -1439,12 +1616,27 @@
       el.addEventListener('change', handler);
     });
 
+    if (customerNoInput && orderingCompanyInput) {
+      const customerHandler = () => {
+        updateFieldFillState(customerNoInput);
+        updateFieldFillState(orderingCompanyInput);
+        persistLocal();
+      };
+      customerNoInput.addEventListener('input', customerHandler);
+      customerNoInput.addEventListener('change', customerHandler);
+      orderingCompanyInput.addEventListener('input', customerHandler);
+      orderingCompanyInput.addEventListener('change', customerHandler);
+    }
+    bindCustomerLookupEvents();
+
     clearBtn.addEventListener('click', () => {
       form.reset();
       for (let i = 1; i <= ITEM_COUNT; i += 1) {
         clearProductOutputs(getItemRow(i));
       }
       hideProductMatchPicker();
+      hideCustomerCnNameSuggest();
+      hideCustomerMatchPicker();
       showProductResolveHint('');
       setDefaultOrderDate();
       updateDeliveryNoteNoPrefix();

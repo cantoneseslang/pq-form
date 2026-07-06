@@ -7,6 +7,7 @@ export default async function handler(req, res) {
       sheetId: !!process.env.PQFORM_SHEET_ID,
       dailyReportSheetId: !!process.env.PQFORM_DAILY_REPORT_SHEET_ID,
       productionOrderSheetId: !!process.env.PRODUCTION_ORDER_SHEET_ID,
+      salesSupabase: !!(process.env.SALES_SUPABASE_URL && process.env.SALES_SUPABASE_SERVICE_ROLE_KEY),
       saLen: (process.env.GOOGLE_SA_JSON || '').length,
       sheetName: process.env.PQFORM_SHEET_NAME || '(default)',
       productionOrderSheetName: process.env.PRODUCTION_ORDER_SHEET_NAME || '202602146',

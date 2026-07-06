@@ -875,6 +875,70 @@ body {
   cursor: pointer;
 }
 
+.pos-customer-name-cell {
+  position: relative;
+}
+
+.customer-suggest {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: 0;
+  right: 0;
+  z-index: 120;
+  margin: 0;
+  padding: 4px 0;
+  list-style: none;
+  max-height: 220px;
+  overflow-y: auto;
+  border: 1px solid #999;
+  background: #fff;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.customer-suggest li button {
+  display: block;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  text-align: left;
+  padding: 5px 8px;
+  font-size: 9pt;
+  cursor: pointer;
+}
+
+.customer-suggest li button:hover,
+.customer-suggest li button:focus {
+  background: #eef4fb;
+}
+
+.customer-match-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 2px 0 4px;
+}
+
+.customer-match-picker__label {
+  font-weight: 700;
+  font-size: 9pt;
+}
+
+.customer-match-picker button {
+  border: 1px solid #666;
+  background: #fff;
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 9pt;
+  cursor: pointer;
+}
+
+.pos-customer-picker-row td {
+  border: 0;
+  padding-top: 0;
+  padding-bottom: 4px;
+}
+
 @media print {
   body {
     background: #fff;

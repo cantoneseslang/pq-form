@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>生產依頼書 Production Order Sheet</title>
   <link rel="icon" href="../logo.png" type="image/png" />
-  <link rel="stylesheet" href="production-order.css?v=plist-fix" />
+  <link rel="stylesheet" href="production-order.css?v=customer-link" />
 </head>
 <body>
   <div class="pos-toolbar no-print">
@@ -56,7 +56,15 @@
           <td class="pos-label">客戶編號：</td>
           <td><input id="customerNo" class="cell-input" type="text" autocomplete="off" /></td>
           <td class="pos-label">訂貨公司：</td>
-          <td><input id="orderingCompany" class="cell-input" type="text" autocomplete="off" /></td>
+          <td class="pos-customer-name-cell">
+            <input id="orderingCompany" class="cell-input" type="text" autocomplete="off" />
+            <ul id="customerCnNameSuggest" class="customer-suggest" hidden></ul>
+          </td>
+        </tr>
+        <tr class="pos-customer-picker-row no-print">
+          <td colspan="6">
+            <div id="customerMatchPicker" class="customer-match-picker" hidden></div>
+          </td>
         </tr>
         <tr>
           <td class="pos-label">出貨日期：</td>
@@ -119,6 +127,6 @@
     </div>
   </form>
 
-  <script src="app.js?v=al-bal"></script>
+  <script src="app.js?v=customer-link"></script>
 </body>
 </html>
