@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>生產依頼書 Production Order Sheet</title>
   <link rel="icon" href="../logo.png" type="image/png" />
-  <link rel="stylesheet" href="production-order.css?v=info-layout" />
+  <link rel="stylesheet" href="production-order.css?v=print-btn" />
 </head>
 <body>
   <div class="pos-toolbar no-print">
@@ -112,6 +112,10 @@
         <tbody id="productItemsBody"></tbody>
       </table>
 
+      <div class="pos-print-bar no-print">
+        <button id="printBtn" class="pos-print-btn" type="button">Print / 印刷</button>
+      </div>
+
       <div class="pos-hint-area no-print">
         <p id="productResolveHint" class="pos-hint" hidden></p>
         <div id="productMatchPicker" class="product-match-picker" hidden></div>
@@ -121,14 +125,14 @@
     <aside class="stock-check-panel no-print" aria-label="產品庫存">
       <div class="stock-check-panel__title">產品庫存 / Stock Check</div>
     </aside>
-    <div id="stockCheckItems" class="stock-check-items" aria-label="產品在庫カード"></div>
+    <div id="stockCheckItems" class="stock-check-items no-print" aria-label="產品在庫カード"></div>
     <aside class="material-stock-panel no-print" aria-label="材料在庫">
       <div class="material-stock-panel__title">材料在庫 / Material Stock</div>
     </aside>
-    <div id="materialCheckItems" class="material-check-items" aria-label="材料在庫カード"></div>
+    <div id="materialCheckItems" class="material-check-items no-print" aria-label="材料在庫カード"></div>
     </div>
   </form>
 
-  <script src="app.js?v=customer-suggest"></script>
+  <script src="app.js?v=print-btn"></script>
 </body>
 </html>

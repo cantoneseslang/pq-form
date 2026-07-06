@@ -13,6 +13,7 @@
   const form = document.getElementById('productionOrderForm');
   const submitBtn = document.getElementById('submitBtn');
   const clearBtn = document.getElementById('clearBtn');
+  const printBtn = document.getElementById('printBtn');
   const formMessage = document.getElementById('formMessage');
   const productResolveHint = document.getElementById('productResolveHint');
   const productMatchPicker = document.getElementById('productMatchPicker');
@@ -1630,6 +1631,10 @@
       orderingCompanyInput.addEventListener('change', customerHandler);
     }
     bindCustomerLookupEvents();
+
+    if (printBtn) {
+      printBtn.addEventListener('click', () => window.print());
+    }
 
     clearBtn.addEventListener('click', () => {
       form.reset();
