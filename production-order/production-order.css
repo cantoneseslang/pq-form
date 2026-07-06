@@ -431,6 +431,13 @@ body {
 .col-info-label { width: 14%; }
 .col-info-value { width: 19%; }
 
+.col-info-label--note { width: 13%; }
+.col-info-value--note { width: 17%; }
+.col-info-label--customer { width: 11%; }
+.col-info-value--customer-code { width: 7%; }
+.col-info-label--company { width: 11%; }
+.col-info-value--company { width: 41%; }
+
 .pos-info-spacer td {
   height: 5mm;
   padding: 0;
@@ -839,6 +846,17 @@ body {
   display: inline-block;
 }
 
+.cell-input--customer-code {
+  width: 5.2em;
+  max-width: 100%;
+  text-align: center;
+  display: inline-block;
+}
+
+.pos-customer-code-cell {
+  white-space: nowrap;
+}
+
 .pos-hint-area {
   margin-top: 8px;
 }
@@ -933,10 +951,13 @@ body {
   cursor: pointer;
 }
 
+.pos-customer-picker-row:not(:has(#customerMatchPicker:not([hidden]))) {
+  display: none;
+}
+
 .pos-customer-picker-row td {
   border: 0;
-  padding-top: 0;
-  padding-bottom: 4px;
+  padding: 0 0 2px;
 }
 
 @media print {

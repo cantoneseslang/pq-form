@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>生產依頼書 Production Order Sheet</title>
   <link rel="icon" href="../logo.png" type="image/png" />
-  <link rel="stylesheet" href="production-order.css?v=customer-suggest" />
+  <link rel="stylesheet" href="production-order.css?v=info-layout" />
 </head>
 <body>
   <div class="pos-toolbar no-print">
@@ -40,12 +40,12 @@
 
       <table class="pos pos-info" aria-label="訂單資料">
         <colgroup>
-          <col class="col-info-label" />
-          <col class="col-info-value" />
-          <col class="col-info-label" />
-          <col class="col-info-value" />
-          <col class="col-info-label" />
-          <col class="col-info-value" />
+          <col class="col-info-label col-info-label--note" />
+          <col class="col-info-value col-info-value--note" />
+          <col class="col-info-label col-info-label--customer" />
+          <col class="col-info-value col-info-value--customer-code" />
+          <col class="col-info-label col-info-label--company" />
+          <col class="col-info-value col-info-value--company" />
         </colgroup>
         <tr>
           <td class="pos-label">出貨單編號：</td>
@@ -54,7 +54,9 @@
             <input id="deliveryNoteNoSuffix" class="cell-input cell-input--note-no" type="text" inputmode="numeric" maxlength="3" autocomplete="off" aria-label="出貨單編號末3位" />
           </td>
           <td class="pos-label">客戶編號：</td>
-          <td><input id="customerNo" class="cell-input" type="text" autocomplete="off" /></td>
+          <td class="pos-customer-code-cell">
+            <input id="customerNo" class="cell-input cell-input--customer-code" type="text" maxlength="5" autocomplete="off" />
+          </td>
           <td class="pos-label">訂貨公司：</td>
           <td class="pos-customer-name-cell">
             <input id="orderingCompany" class="cell-input" type="text" autocomplete="off" />
