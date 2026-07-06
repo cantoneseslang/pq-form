@@ -119,7 +119,7 @@
         <tr class="pos-item-line pos-item-line--1${startClass}${endRowspanClass}" data-item="${n}">
           <td class="pos-item-no" rowspan="5">${n}</td>
           <td class="pos-grid-label">產品編碼：</td>
-          <td colspan="2"><input data-field="productCode" class="cell-input cell-input--code" type="text" readonly tabindex="-1" /></td>
+          <td colspan="2"><input data-field="productCode" class="cell-input cell-input--code" type="text" autocomplete="off" /></td>
           <td class="pos-grid-label">產品名稱：</td>
           <td colspan="2"><input data-field="productName" class="cell-input cell-input--name" type="text" readonly tabindex="-1" /></td>
           <td class="pos-qty" rowspan="5">
@@ -619,6 +619,7 @@
     window.addEventListener('afterprint', restoreEmptySelectsAfterPrint);
   }
 
+  function bindCustomerLookupEvents() {
     if (!customerNoInput || !orderingCompanyInput) return;
 
     customerNoInput.addEventListener('input', () => {
@@ -1272,20 +1273,45 @@
     }
   }
 
+  function isProductCodeHintActive(codeInput) {
+    return !!codeInput?.classList.contains('product-code-hint');
+  }
+
+  function setProductCodeField(codeInput, code, { hint = false } = {}) {
+    if (!codeInput) return;
+    const showHint = hint || code === NOT_FOUND_CODE;
+    if (showHint) {
+      codeInput.value = '';
+      codeInput.placeholder = NOT_FOUND_CODE;
+      codeInput.classList.add('product-code-hint');
+      codeInput.classList.remove('product-not-found');
+    } else {
+      codeInput.value = code;
+      codeInput.placeholder = '';
+      codeInput.classList.remove('product-code-hint', 'product-not-found');
+    }
+    updateFieldFillState(codeInput);
+  }
+
+  function clearProductCodeHint(codeInput) {
+    if (!isProductCodeHintActive(codeInput)) return;
+    codeInput.placeholder = '';
+    codeInput.classList.remove('product-code-hint');
+    updateFieldFillState(codeInput);
+  }
+
   function setProductOutputs(row, code, name, notFound = false, materialWidth = null) {
     const codeInput = getField(row, 'productCode');
     const nameInput = getField(row, 'productName');
     const materialInput = getField(row, 'materialWidth');
     if (!codeInput || !nameInput) return;
-    codeInput.value = code;
+    setProductCodeField(codeInput, code, { hint: notFound || code === NOT_FOUND_CODE });
     nameInput.value = name;
-    codeInput.classList.toggle('product-not-found', notFound || code === NOT_FOUND_CODE);
     nameInput.classList.toggle('product-not-found', notFound || name === NOT_FOUND_NAME);
     if (materialInput && materialWidth !== null) {
       materialInput.value = materialWidth;
       updateFieldFillState(materialInput);
     }
-    updateFieldFillState(codeInput);
     updateFieldFillState(nameInput);
     if (row?.dataset?.item) {
       const itemNo = Number(row.dataset.item);
@@ -1344,10 +1370,9 @@
         applyPlistMaterialWidthIfEmpty(row, match.materialWidth);
         persistLocal();
       } else if (data.matches.length > 1) {
-        codeInput.value = '';
+        setProductCodeField(codeInput, '', { hint: false });
         const uniqueNames = [...new Set(data.matches.map((m) => displayPlistProductName(m.name, spec)))];
         nameInput.value = uniqueNames.length === 1 ? uniqueNames[0] : '';
-        codeInput.classList.remove('product-not-found');
         nameInput.classList.remove('product-not-found');
         updateStockCardForItem(itemNo);
         showProductMatchPicker(itemNo, data.matches, (match) => {
@@ -1427,7 +1452,13 @@
     getField(row, 'height').value = product.height || '';
     getField(row, 'length').value = product.length || '';
     getField(row, 'quantity').value = product.quantity || '';
-    getField(row, 'productCode').value = product.productCode || '';
+    const codeInput = getField(row, 'productCode');
+    const savedCode = product.productCode || '';
+    if (savedCode === NOT_FOUND_CODE) {
+      setProductCodeField(codeInput, '', { hint: true });
+    } else {
+      setProductCodeField(codeInput, savedCode, { hint: false });
+    }
     getField(row, 'productName').value = product.productName || '';
     getField(row, 'materialWidth').value = product.materialWidth || '';
     getField(row, 'packagingNote').value = product.packagingNote || '';
@@ -1589,8 +1620,17 @@
     const specFields = ['productType', 'thickness', 'width', 'height', 'length'];
     const materialStockFields = ['thickness', 'materialWidth', 'length', 'quantity'];
 
+    productItemsBody.addEventListener('focusin', (e) => {
+      if (e.target.matches('[data-field="productCode"]')) {
+        clearProductCodeHint(e.target);
+      }
+    }, true);
+
     productItemsBody.addEventListener('input', (e) => {
       const row = e.target.closest('tr[data-item]');
+      if (e.target.matches('[data-field="productCode"]')) {
+        clearProductCodeHint(e.target);
+      }
       updateFieldFillState(e.target);
       if (row) {
         persistLocal();
@@ -1602,6 +1642,10 @@
           if (e.target.dataset.field === 'quantity') {
             refreshQtyHighlight(itemNo);
           }
+          scheduleMaterialStockUpdate(itemNo);
+        }
+        if (e.target.dataset.field === 'productCode') {
+          updateStockCardForItem(itemNo);
           scheduleMaterialStockUpdate(itemNo);
         }
         return;

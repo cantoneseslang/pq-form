@@ -825,6 +825,11 @@ body {
   color: #b00020;
 }
 
+.cell-input--code.product-code-hint::placeholder {
+  color: #e08080;
+  opacity: 1;
+}
+
 .cell-select {
   cursor: pointer;
   appearance: auto;
