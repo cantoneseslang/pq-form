@@ -388,25 +388,6 @@
     root.querySelectorAll('.pos-product .cell-input, .pos-product .cell-select, .pos-info .cell-input').forEach(updateFieldFillState);
   }
 
-  function blankEmptySelectLabels(root = form) {
-    root.querySelectorAll('.cell-select').forEach((sel) => {
-      if (String(sel.value ?? '').trim()) return;
-      const opt = sel.options[sel.selectedIndex];
-      if (!opt || sel.dataset.printSavedLabel !== undefined) return;
-      sel.dataset.printSavedLabel = opt.text;
-      opt.text = '';
-    });
-  }
-
-  function restoreEmptySelectLabels(root = form) {
-    root.querySelectorAll('.cell-select').forEach((sel) => {
-      if (sel.dataset.printSavedLabel === undefined) return;
-      const opt = sel.options[sel.selectedIndex];
-      if (opt) opt.text = sel.dataset.printSavedLabel;
-      delete sel.dataset.printSavedLabel;
-    });
-  }
-
   function getSpecValues(row) {
     return {
       type: getField(row, 'productType')?.value.trim() || '',
@@ -613,7 +594,31 @@
     customerNameLookupTimer = setTimeout(() => resolveCustomerByCnName(), 200);
   }
 
-  function bindCustomerLookupEvents() {
+  let printBlankSelectRestore = [];
+
+  function blankEmptySelectsForPrint() {
+    printBlankSelectRestore = [];
+    document.querySelectorAll('.pos-product .cell-select').forEach((sel) => {
+      if (String(sel.value ?? '').trim()) return;
+      const option = sel.options[sel.selectedIndex];
+      if (!option) return;
+      printBlankSelectRestore.push({ option, text: option.textContent });
+      option.textContent = '';
+    });
+  }
+
+  function restoreEmptySelectsAfterPrint() {
+    printBlankSelectRestore.forEach(({ option, text }) => {
+      option.textContent = text;
+    });
+    printBlankSelectRestore = [];
+  }
+
+  function bindPrintHandlers() {
+    window.addEventListener('beforeprint', blankEmptySelectsForPrint);
+    window.addEventListener('afterprint', restoreEmptySelectsAfterPrint);
+  }
+
     if (!customerNoInput || !orderingCompanyInput) return;
 
     customerNoInput.addEventListener('input', () => {
@@ -1650,12 +1655,11 @@
       orderingCompanyInput.addEventListener('change', customerHandler);
     }
     bindCustomerLookupEvents();
+    bindPrintHandlers();
 
     if (printBtn) {
       printBtn.addEventListener('click', () => window.print());
     }
-    window.addEventListener('beforeprint', () => blankEmptySelectLabels());
-    window.addEventListener('afterprint', () => restoreEmptySelectLabels());
 
     clearBtn.addEventListener('click', () => {
       form.reset();

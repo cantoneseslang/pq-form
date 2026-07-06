@@ -1031,14 +1031,51 @@ body {
   .pos-product .cell-select {
     appearance: none;
     -webkit-appearance: none;
-    -moz-appearance: none;
     background: transparent !important;
     background-image: none !important;
-    padding-right: 0;
+    padding-right: 2px;
   }
 
   .pos-product .cell-select.cell-is-empty {
     color: transparent;
+  }
+
+  .pos-product tbody .pos-item-line td {
+    border-color: transparent !important;
+  }
+
+  .pos-product tbody .pos-item-line td.pos-item-no,
+  .pos-product tbody .pos-item-line td.pos-qty {
+    border-color: #000 !important;
+  }
+
+  .pos-item-line--start td {
+    border-top: 2px solid #000 !important;
+  }
+
+  .pos-item-line--start td.pos-item-no,
+  .pos-item-line--start td.pos-qty {
+    border-top: 2px solid #000 !important;
+  }
+
+  .pos-item-line--end td {
+    border-bottom: 2px solid #000 !important;
+  }
+
+  .pos-item-line--end-rowspan td.pos-item-no,
+  .pos-item-line--end-rowspan td.pos-qty {
+    border-bottom: 2px solid #000 !important;
+  }
+
+  .pos-pair-cell,
+  .pos-status-group {
+    border-right: none !important;
+  }
+
+  .pos-product tbody td.pos-item-no::before,
+  .pos-product tbody td.pos-qty::before {
+    border-left-color: #000;
+    border-right-color: #000;
   }
 }
 
