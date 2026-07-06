@@ -1027,6 +1027,19 @@ body {
   .pos-info .cell-input.cell-is-empty {
     background: transparent;
   }
+
+  .pos-product .cell-select {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background: transparent !important;
+    background-image: none !important;
+    padding-right: 0;
+  }
+
+  .pos-product .cell-select.cell-is-empty {
+    color: transparent;
+  }
 }
 
 @media screen and (max-width: 900px) {

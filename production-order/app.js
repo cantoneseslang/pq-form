@@ -388,6 +388,25 @@
     root.querySelectorAll('.pos-product .cell-input, .pos-product .cell-select, .pos-info .cell-input').forEach(updateFieldFillState);
   }
 
+  function blankEmptySelectLabels(root = form) {
+    root.querySelectorAll('.cell-select').forEach((sel) => {
+      if (String(sel.value ?? '').trim()) return;
+      const opt = sel.options[sel.selectedIndex];
+      if (!opt || sel.dataset.printSavedLabel !== undefined) return;
+      sel.dataset.printSavedLabel = opt.text;
+      opt.text = '';
+    });
+  }
+
+  function restoreEmptySelectLabels(root = form) {
+    root.querySelectorAll('.cell-select').forEach((sel) => {
+      if (sel.dataset.printSavedLabel === undefined) return;
+      const opt = sel.options[sel.selectedIndex];
+      if (opt) opt.text = sel.dataset.printSavedLabel;
+      delete sel.dataset.printSavedLabel;
+    });
+  }
+
   function getSpecValues(row) {
     return {
       type: getField(row, 'productType')?.value.trim() || '',
@@ -1635,6 +1654,8 @@
     if (printBtn) {
       printBtn.addEventListener('click', () => window.print());
     }
+    window.addEventListener('beforeprint', () => blankEmptySelectLabels());
+    window.addEventListener('afterprint', () => restoreEmptySelectLabels());
 
     clearBtn.addEventListener('click', () => {
       form.reset();
