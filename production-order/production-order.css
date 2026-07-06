@@ -51,6 +51,16 @@ body {
   color: #fff;
 }
 
+.pos-toolbar__btn--print {
+  background: #6c757d;
+  border-color: #6c757d;
+  color: #fff;
+}
+
+.pos-toolbar__btn--print:hover {
+  filter: brightness(1.05);
+}
+
 .pos-toolbar__msg {
   margin: 0;
   font-size: 10pt;
@@ -859,26 +869,6 @@ body {
 
 .pos-hint-area {
   margin-top: 8px;
-}
-
-.pos-print-bar {
-  margin-top: 10px;
-  text-align: center;
-}
-
-.pos-print-btn {
-  border: 1px solid #6c757d;
-  background: #6c757d;
-  color: #fff;
-  border-radius: 4px;
-  padding: 8px 18px;
-  font-weight: 600;
-  font-size: 10pt;
-  cursor: pointer;
-}
-
-.pos-print-btn:hover {
-  filter: brightness(1.05);
 }
 
 .pos-hint {

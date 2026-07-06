@@ -5,13 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>生產依頼書 Production Order Sheet</title>
   <link rel="icon" href="../logo.png" type="image/png" />
-  <link rel="stylesheet" href="production-order.css?v=print-btn" />
+  <link rel="stylesheet" href="production-order.css?v=print-toolbar" />
 </head>
 <body>
   <div class="pos-toolbar no-print">
     <a class="pos-toolbar__link" href="/">返回 PQ-Form</a>
     <button id="submitBtn" class="pos-toolbar__btn pos-toolbar__btn--primary" type="submit" form="productionOrderForm">送出至 Google Sheet</button>
     <button id="clearBtn" class="pos-toolbar__btn" type="button">清空表單</button>
+    <button id="printBtn" class="pos-toolbar__btn pos-toolbar__btn--print" type="button">Print / 印刷</button>
     <p id="formMessage" class="pos-toolbar__msg" hidden></p>
   </div>
 
@@ -112,10 +113,6 @@
         <tbody id="productItemsBody"></tbody>
       </table>
 
-      <div class="pos-print-bar no-print">
-        <button id="printBtn" class="pos-print-btn" type="button">Print / 印刷</button>
-      </div>
-
       <div class="pos-hint-area no-print">
         <p id="productResolveHint" class="pos-hint" hidden></p>
         <div id="productMatchPicker" class="product-match-picker" hidden></div>
@@ -133,6 +130,6 @@
     </div>
   </form>
 
-  <script src="app.js?v=print-btn"></script>
+  <script src="app.js?v=print-toolbar"></script>
 </body>
 </html>
