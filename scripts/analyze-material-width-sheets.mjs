@@ -28,6 +28,9 @@ for (const envPath of envPaths) {
 const outPath = process.argv.includes('--csv')
   ? resolve(__dirname, '../output/material-width-recommendations.csv')
   : null;
+const eofficeOnlyPath = process.argv.includes('--eoffice-only-csv')
+  ? resolve(__dirname, '../output/eoffice-not-in-plist.csv')
+  : null;
 const jsonOnly = process.argv.includes('--json');
 
 try {
@@ -60,6 +63,19 @@ try {
     }
     writeFileSync(outPath, `${lines.join('\n')}\n`, 'utf8');
     console.log('Wrote', outPath);
+  }
+
+  if (eofficeOnlyPath) {
+    const { mkdirSync } = await import('fs');
+    mkdirSync(resolve(__dirname, '../output'), { recursive: true });
+    const items = report.crossRef?.eofficeOnlyItems || [];
+    const lines = ['code,name,width_mm'];
+    for (const item of items) {
+      const name = String(item.name ?? '').replace(/"/g, '""');
+      lines.push([item.code, `"${name}"`, item.width].join(','));
+    }
+    writeFileSync(eofficeOnlyPath, `${lines.join('\n')}\n`, 'utf8');
+    console.log('Wrote', eofficeOnlyPath, `(${items.length} rows)`);
   }
 
   if (!report.access.monthlyDes) process.exitCode = 2;

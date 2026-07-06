@@ -1,8 +1,8 @@
 import {
-  fetchMaterialStockMap,
   lookupMaterialStock,
   analyzeRawMaterialInventory,
 } from '../../lib/rawMaterialInventorySheets.js';
+import { getCachedMaterialStock } from '../../lib/materialStockCache.js';
 import {
   produciblePieces,
   pieceWeightKg,
@@ -11,33 +11,6 @@ import {
 } from '../../lib/materialYield.js';
 
 export const config = { runtime: 'nodejs' };
-
-const CACHE_TTL_MS = 10 * 60 * 1000;
-let cachedStock = null;
-let cachedAt = 0;
-let pendingFetch = null;
-
-async function getStockData() {
-  const now = Date.now();
-  if (cachedStock && now - cachedAt < CACHE_TTL_MS) {
-    return cachedStock;
-  }
-  if (pendingFetch) return pendingFetch;
-
-  pendingFetch = fetchMaterialStockMap()
-    .then((data) => {
-      cachedStock = data;
-      cachedAt = Date.now();
-      pendingFetch = null;
-      return cachedStock;
-    })
-    .catch((error) => {
-      pendingFetch = null;
-      throw error;
-    });
-
-  return pendingFetch;
-}
 
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store');
@@ -56,16 +29,19 @@ export default async function handler(req, res) {
       return res.status(200).json({ success: true, action: 'analyze', report });
     }
 
-    const stock = await getStockData();
+    const stock = await getCachedMaterialStock();
     const thickness = url.searchParams.get('thickness') || '';
     const materialWidth = url.searchParams.get('materialWidth') || url.searchParams.get('mw') || '';
     const lengthMm = url.searchParams.get('length') || url.searchParams.get('l') || '';
     const requestedQty = url.searchParams.get('qty') || '';
+    const productType = url.searchParams.get('productType') || url.searchParams.get('type') || '';
+    const productName = url.searchParams.get('productName') || url.searchParams.get('name') || '';
 
     if (!thickness && !materialWidth) {
       return res.status(200).json({
         success: true,
         fetchedAt: stock.fetchedAt,
+        sourceSpreadsheetId: stock.sourceSpreadsheetId,
         stats: stock.stats,
         summaries: stock.summaries,
         byTab: stock.byTab,
@@ -76,6 +52,8 @@ export default async function handler(req, res) {
       byTab: stock.byTab,
       thickness,
       materialWidth,
+      productType,
+      productName,
     });
 
     if (!hit) {
@@ -88,7 +66,7 @@ export default async function handler(req, res) {
       });
     }
 
-    const densityGcm3 = densityForMaterial({ tabName: hit.tabTitles[0] });
+    const densityGcm3 = densityForMaterial({ tabName: hit.tabTitles[0], thicknessKey: hit.thicknessKey });
     const pieceKg = pieceWeightKg({
       lengthMm,
       materialWidthMm: hit.materialWidth,

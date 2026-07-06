@@ -6,7 +6,7 @@
   const ITEM_COUNT = 6;
   const STOCK_CARD_GAP = 10;
 
-  const FALLBACK_THICKNESS_OPTIONS = ['0.3', '0.4', '0.4D', '0.5', '0.6', '0.8', '0.8A', '1.0', '1.0A', '1.2', '1.5', '3.0'];
+  const FALLBACK_THICKNESS_OPTIONS = ['0.3', '0.4', '0.4D', '0.5', '0.6', '0.8', '0.8A', '1.0', '1.0A', '1.2', '1.5', '1.5A', '3.0'];
   const NOT_FOUND_CODE = '暫時未搵到產品編碼';
   const NOT_FOUND_NAME = '暫時未搵到產品名稱';
 
@@ -41,9 +41,9 @@
 
   function thicknessForProductLookup(value) {
     const t = formatThicknessValue(value);
-    if (t === '0.8A') return '0.8';
-    if (t === '0.4D') return '0.4';
-    if (t === '1.0A') return '1.0';
+    if (!t) return '';
+    const m = t.toUpperCase().match(/^([\d.]+)([AD])$/);
+    if (m) return formatThicknessValue(m[1]);
     return t;
   }
 
@@ -407,6 +407,18 @@
     return String(name).replace(/^[\d.]+(?=[x×])/i, displayT);
   }
 
+  function displayPlistProductName(name, spec) {
+    return applyRecordedThicknessToProductName(name, spec.thickness);
+  }
+
+  function applyPlistMaterialWidthIfEmpty(row, materialWidth) {
+    const materialInput = getField(row, 'materialWidth');
+    const mw = String(materialWidth ?? '').trim();
+    if (!materialInput || !mw || materialInput.value.trim()) return;
+    materialInput.value = mw;
+    updateFieldFillState(materialInput);
+  }
+
   function hideProductMatchPicker() {
     productMatchPicker.hidden = true;
     productMatchPicker.innerHTML = '';
@@ -618,6 +630,35 @@
     return Number.isFinite(num) ? String(num) : text;
   }
 
+  function isAluminiumCornerBead({ productType = '', productName = '' } = {}) {
+    const type = String(productType).trim();
+    if (type !== '批灰角') return false;
+    const name = String(productName).trim();
+    if (!name) return false;
+    return /鋁|aluminium|aluminum/i.test(name)
+      || /批灰角鋁|批灰角\(鋁\)|批灰角（鋁）/i.test(name);
+  }
+
+  function resolveMaterialInventoryThicknessKey({
+    thickness = '',
+    productType = '',
+    productName = '',
+  } = {}) {
+    const raw = String(thickness ?? '').trim();
+    if (!raw) return '';
+
+    const upper = raw.toUpperCase();
+    const aluminium = isAluminiumCornerBead({ productType, productName });
+
+    if (upper === '0.4AL') return '0.4AL';
+    if (upper === '0.4D' || upper === '0.4B') return aluminium ? '0.4AL' : '0.4D';
+    if (upper === '0.4W' || upper === '0.8A' || upper === '0.8C') return upper;
+
+    if (aluminium && (upper === '0.4' || parseFloat(upper) === 0.4)) return '0.4AL';
+
+    return raw;
+  }
+
   function thicknessTabCandidates(thickness) {
     const key = String(thickness ?? '').trim().toUpperCase();
     if (THICKNESS_TAB_CANDIDATES[key]) return THICKNESS_TAB_CANDIDATES[key];
@@ -640,11 +681,31 @@
     return (length * width * thickness * densityGcm3) / 1_000_000;
   }
 
-  function calcProduciblePieces({ availableKg, lengthMm, materialWidthMm, thicknessMm }) {
+  function calcProduciblePieces({ availableKg, lengthMm, materialWidthMm, thicknessMm, densityGcm3 = MATERIAL_STEEL_DENSITY }) {
     const kg = parsePositiveNumber(availableKg);
-    const pieceKg = calcPieceWeightKg({ lengthMm, materialWidthMm, thicknessMm });
+    const pieceKg = calcPieceWeightKg({ lengthMm, materialWidthMm, thicknessMm, densityGcm3 });
     if (!kg || !pieceKg) return null;
     return Math.floor(kg / pieceKg);
+  }
+
+  function densityFromMaterialStock(stock) {
+    const tab = stock?.tabTitles?.[0] || '';
+    if (/aluminium/i.test(tab)) return 2.7;
+    const lotDensity = stock?.lots?.[0]?.densityGcm3;
+    if (Number.isFinite(lotDensity) && lotDensity > 0) return lotDensity;
+    return MATERIAL_STEEL_DENSITY;
+  }
+
+  function materialStockDisplayLabel({ thickness, materialWidth, stock, productType = '', productName = '' }) {
+    const tab = stock?.tabTitles?.[0];
+    const widthPart = materialWidth ? `${materialWidth}mm` : '';
+    if (tab && widthPart) return `${tab} × ${widthPart}`;
+    if (tab) return tab;
+    const thicknessKey = resolveMaterialInventoryThicknessKey({ thickness, productType, productName });
+    const candidateTab = thicknessTabCandidates(thicknessKey)[0];
+    if (candidateTab && widthPart) return `${candidateTab} × ${widthPart}`;
+    if (candidateTab) return candidateTab;
+    return [thickness, widthPart].filter(Boolean).join(' × ');
   }
 
   function materialAvailabilityStatus({ requestedQty, producibleQty }) {
@@ -654,11 +715,12 @@
     return prod >= req ? 'ok' : 'short';
   }
 
-  function lookupLocalMaterialStock({ byTab, thickness, materialWidth }) {
+  function lookupLocalMaterialStock({ byTab, thickness, materialWidth, productType = '', productName = '' }) {
     const mw = normalizeMaterialWidthValue(materialWidth);
     if (!mw || !byTab) return null;
 
-    const candidates = thicknessTabCandidates(thickness);
+    const thicknessKey = resolveMaterialInventoryThicknessKey({ thickness, productType, productName });
+    const candidates = thicknessTabCandidates(thicknessKey);
     let totalKg = 0;
     let totalRolls = 0;
     const lots = [];
@@ -678,6 +740,7 @@
 
     return {
       thickness: String(thickness ?? '').trim(),
+      thicknessKey,
       materialWidth: mw,
       tabTitles: matchedTabs,
       totalKg: Math.round(totalKg * 1000) / 1000,
@@ -748,7 +811,10 @@
       const rolls = lot.rolls !== null && lot.rolls !== undefined
         ? `${escapeHtml(formatNumber(lot.rolls))}卷`
         : '';
-      return `<li class="stock-card__lot">${escapeHtml(date)}　${lotNo}　${rolls}</li>`;
+      const kg = lot.availableKg !== null && lot.availableKg !== undefined
+        ? `${escapeHtml(formatNumber(lot.availableKg, 1))}kg`
+        : '';
+      return `<li class="stock-card__lot">${escapeHtml(date)}　${lotNo}${rolls ? `　${rolls}` : ''}${kg ? `　${kg}` : ''}</li>`;
     }).join('');
     return `<ul class="stock-card__lots">${items}</ul>`;
   }
@@ -855,8 +921,10 @@
       stock = null,
       yieldInfo = null,
       requestedQty = '',
+      productType = '',
+      productName = '',
     } = payload;
-    const label = [thickness, materialWidth ? `${materialWidth}mm` : ''].filter(Boolean).join(' × ');
+    const label = materialStockDisplayLabel({ thickness, materialWidth, stock, productType, productName });
     let cardHtml = '';
 
     if (state === 'empty') {
@@ -923,6 +991,8 @@
     const materialWidth = getField(row, 'materialWidth')?.value.trim() || '';
     const length = getField(row, 'length')?.value.trim() || '';
     const requestedQty = getField(row, 'quantity')?.value.trim() || '';
+    const productType = getField(row, 'productType')?.value.trim() || '';
+    const productName = getField(row, 'productName')?.value.trim() || '';
 
     if (!thickness && !materialWidth) {
       materialProducibleByItem.delete(itemNo);
@@ -933,12 +1003,12 @@
 
     if (!materialWidth) {
       materialProducibleByItem.delete(itemNo);
-      renderMaterialStockCardSlot(itemNo, 'no-mw', { thickness });
+      renderMaterialStockCardSlot(itemNo, 'no-mw', { thickness, productType, productName });
       refreshQtyHighlight(itemNo);
       return;
     }
 
-    renderMaterialStockCardSlot(itemNo, 'loading', { thickness, materialWidth });
+    renderMaterialStockCardSlot(itemNo, 'loading', { thickness, materialWidth, productType, productName });
 
     try {
       const stockPayload = await ensureMaterialStockData();
@@ -946,11 +1016,13 @@
         byTab: stockPayload.byTab,
         thickness,
         materialWidth,
+        productType,
+        productName,
       });
 
       if (!stock) {
         materialProducibleByItem.set(itemNo, 0);
-        renderMaterialStockCardSlot(itemNo, 'not-found', { thickness, materialWidth });
+        renderMaterialStockCardSlot(itemNo, 'not-found', { thickness, materialWidth, productType, productName });
         refreshQtyHighlight(itemNo);
         return;
       }
@@ -960,6 +1032,7 @@
         lengthMm: length,
         materialWidthMm: stock.materialWidth,
         thicknessMm: thickness,
+        densityGcm3: densityFromMaterialStock(stock),
       });
       materialProducibleByItem.set(itemNo, producibleQty ?? 0);
       const yieldInfo = {
@@ -973,6 +1046,8 @@
         stock,
         yieldInfo,
         requestedQty,
+        productType,
+        productName,
       });
       refreshQtyHighlight(itemNo);
     } catch (error) {
@@ -981,6 +1056,8 @@
         thickness,
         materialWidth,
         error: error?.message || '材料在庫載入失敗',
+        productType,
+        productName,
       });
       refreshQtyHighlight(itemNo);
     }
@@ -1020,7 +1097,7 @@
   }
 
   function clearProductOutputs(row) {
-    setProductOutputs(row, '', '', false, '');
+    setProductOutputs(row, '', '', false, null);
     if (row?.dataset?.item) {
       const itemNo = Number(row.dataset.item);
       renderStockCardSlot(itemNo, 'empty');
@@ -1051,58 +1128,45 @@
       w: spec.width,
       h: spec.height,
       l: spec.length,
+      strictType: '1',
     });
 
     try {
       const res = await fetch(`${API_BASE}/api/pq_form/plist/search?${params.toString()}`, { cache: 'no-store' });
       const data = await res.json();
-      const displayName = (name) => applyRecordedThicknessToProductName(name, spec.thickness);
 
       if (!data.success) {
-        setProductOutputs(row, NOT_FOUND_CODE, NOT_FOUND_NAME, true, '');
+        setProductOutputs(row, NOT_FOUND_CODE, NOT_FOUND_NAME, true, null);
         return;
       }
 
       if (data.matches.length === 1) {
         const match = data.matches[0];
-        if (data.typeAdjusted && data.resolvedType) {
-          const typeSelect = getField(row, 'productType');
-          if (typeSelect && typeSelect.value !== data.resolvedType) {
-            typeSelect.value = data.resolvedType;
-            updateFieldFillState(typeSelect);
-          }
-        }
-        setProductOutputs(row, match.code, displayName(match.name), false, match.materialWidth || '');
-        if (data.hint && data.hintType === 'type_adjusted') {
-          showProductResolveHint(`項目 ${itemNo}：${data.hint}`, false);
-        }
+        setProductOutputs(row, match.code, displayPlistProductName(match.name, spec), false, null);
+        applyPlistMaterialWidthIfEmpty(row, match.materialWidth);
         persistLocal();
       } else if (data.matches.length > 1) {
         codeInput.value = '';
-        const uniqueNames = [...new Set(data.matches.map((m) => displayName(m.name)))];
+        const uniqueNames = [...new Set(data.matches.map((m) => displayPlistProductName(m.name, spec)))];
         nameInput.value = uniqueNames.length === 1 ? uniqueNames[0] : '';
         codeInput.classList.remove('product-not-found');
         nameInput.classList.remove('product-not-found');
         updateStockCardForItem(itemNo);
         showProductMatchPicker(itemNo, data.matches, (match) => {
-          if (data.typeAdjusted && data.resolvedType) {
-            const typeSelect = getField(row, 'productType');
-            if (typeSelect) {
-              typeSelect.value = data.resolvedType;
-              updateFieldFillState(typeSelect);
-            }
-          }
-          setProductOutputs(row, match.code, displayName(match.name), false, match.materialWidth || '');
+          setProductOutputs(row, match.code, displayPlistProductName(match.name, spec), false, null);
+          applyPlistMaterialWidthIfEmpty(row, match.materialWidth);
           persistLocal();
         });
       } else {
-        setProductOutputs(row, NOT_FOUND_CODE, buildProvisionalProductName(spec.type, spec), true, '');
-        if (data.hint) showProductResolveHint(`項目 ${itemNo}：${data.hint}`, true);
+        setProductOutputs(row, '', buildProvisionalProductName(spec.type, spec), false, null);
+        if (data.hint && data.hintType === 'length') {
+          showProductResolveHint(`項目 ${itemNo}：${data.hint}`, false);
+        }
         persistLocal();
       }
     } catch (error) {
       console.error('plist search failed', error);
-      setProductOutputs(row, NOT_FOUND_CODE, NOT_FOUND_NAME, true, '');
+      setProductOutputs(row, NOT_FOUND_CODE, NOT_FOUND_NAME, true, null);
     }
   }
 

@@ -1,4 +1,10 @@
-import { searchPlistWithTypeFallback, getPlistLengthHints, getPlistCoverageStats } from '../../../lib/plist.js';
+import {
+  searchPlist,
+  searchPlistWithTypeFallback,
+  getPlistLengthHints,
+  getPlistCoverageStats,
+  thicknessForProductLookup,
+} from '../../../lib/plist.js';
 
 export const config = { runtime: 'nodejs' };
 
@@ -20,7 +26,8 @@ export default async function handler(req, res) {
     }
 
     const type = url.searchParams.get('type') || '';
-    const t = url.searchParams.get('t') || '';
+    const tRaw = url.searchParams.get('t') || '';
+    const t = thicknessForProductLookup(tRaw) || tRaw;
     const w = url.searchParams.get('w') || '';
     const h = url.searchParams.get('h') || '';
     const l = url.searchParams.get('l') || '';
@@ -34,7 +41,15 @@ export default async function handler(req, res) {
       });
     }
 
-    const result = await searchPlistWithTypeFallback({ type, t, w, h, l, other });
+    const strictType = url.searchParams.get('strictType') === '1'
+      || url.searchParams.get('strictType') === 'true';
+    const result = strictType
+      ? await searchPlist({ type, t, w, h, l, other }).then((matches) => ({
+        matches,
+        resolvedType: type,
+        typeAdjusted: false,
+      }))
+      : await searchPlistWithTypeFallback({ type, t, w, h, l, other });
     const { matches, resolvedType, typeAdjusted, multiType } = result;
     let hint = '';
     let hintType = '';
