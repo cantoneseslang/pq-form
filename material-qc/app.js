@@ -15,7 +15,6 @@
   const substrate = document.getElementById('substrate');
   const thicknessUm = document.getElementById('thicknessUm');
   const standardUm = document.getElementById('standardUm');
-  const judgmentBox = document.getElementById('judgmentBox');
   const judgmentValue = document.getElementById('judgmentValue');
   const cameraInput = document.getElementById('cameraInput');
   const captureBtn = document.getElementById('captureBtn');
@@ -86,11 +85,11 @@
     const measured = parseFloat(thicknessUm.value);
     const standard = parseFloat(standardUm.value);
     if (!Number.isFinite(measured) || !Number.isFinite(standard)) {
-      judgmentBox.hidden = true;
+      judgmentValue.textContent = '—';
+      judgmentValue.className = 'mqc-judgment__value mqc-judgment__value--empty';
       return;
     }
 
-    judgmentBox.hidden = false;
     const pass = measured >= standard;
     judgmentValue.textContent = pass ? '合格' : '不合格';
     judgmentValue.className = `mqc-judgment__value mqc-judgment__value--${pass ? 'pass' : 'fail'}`;
@@ -283,7 +282,8 @@
     receiptDate.value = todayIsoDate();
     inspector.value = savedInspector;
     updateLotPrefix();
-    judgmentBox.hidden = true;
+    judgmentValue.textContent = '—';
+    judgmentValue.className = 'mqc-judgment__value mqc-judgment__value--empty';
     resetPhoto();
     hideMessage();
     schedulePersist();
@@ -370,7 +370,8 @@
       substrate.value = '';
       thicknessUm.value = '';
       standardUm.value = '';
-      judgmentBox.hidden = true;
+      judgmentValue.textContent = '—';
+    judgmentValue.className = 'mqc-judgment__value mqc-judgment__value--empty';
       resetPhoto();
       schedulePersist();
     } catch (e) {

@@ -49,7 +49,7 @@ body {
 }
 
 .mqc-main {
-  max-width: 520px;
+  max-width: 640px;
   margin: 0 auto;
   padding: 16px;
 }
@@ -67,6 +67,11 @@ body {
   padding: 16px;
 }
 
+.mqc-section--camera {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
 .mqc-section--info {
   background: #f8fafc;
 }
@@ -78,20 +83,35 @@ body {
   color: #1e4f82;
 }
 
+.mqc-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.mqc-row:last-child {
+  margin-bottom: 0;
+}
+
 .mqc-field {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  margin-bottom: 14px;
+  min-width: 0;
 }
 
-.mqc-field:last-child {
-  margin-bottom: 0;
+.mqc-field--half {
+  flex: 1 1 0;
+}
+
+.mqc-field--quarter {
+  flex: 1 1 0;
 }
 
 .mqc-field__label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
+  white-space: nowrap;
 }
 
 .mqc-required {
@@ -108,6 +128,12 @@ body {
   background: #fff;
 }
 
+.mqc-input--compact {
+  min-height: 40px;
+  padding: 8px 6px;
+  font-size: 14px;
+}
+
 .mqc-input:focus {
   outline: 2px solid #1e4f82;
   outline-offset: 1px;
@@ -117,17 +143,17 @@ body {
 .mqc-width-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
 }
 
 .mqc-lot-prefix {
   flex: 0 0 auto;
   min-height: 44px;
-  padding: 10px 12px;
+  padding: 10px 8px;
   border: 1px solid #b8c4d0;
   border-radius: 8px;
   background: #eef3f8;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   white-space: nowrap;
 }
@@ -144,7 +170,7 @@ body {
 
 .mqc-width-unit {
   flex: 0 0 auto;
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 600;
   color: #444;
 }
@@ -233,28 +259,27 @@ body {
 .mqc-scan-status--warn { color: #9a6700; }
 .mqc-scan-status--error { color: #b00020; }
 
-.mqc-judgment {
+.mqc-judgment-inline {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  margin-top: 4px;
-  padding: 12px 14px;
+  justify-content: center;
+  min-height: 40px;
+  border: 1px solid #b8c4d0;
   border-radius: 8px;
-  border: 1px solid #dde3ea;
-  background: #fff;
-}
-
-.mqc-judgment__label {
-  font-size: 14px;
-  font-weight: 600;
+  background: #f8fafc;
 }
 
 .mqc-judgment__value {
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 700;
-  padding: 6px 14px;
-  border-radius: 999px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  text-align: center;
+}
+
+.mqc-judgment__value--empty {
+  color: #888;
+  background: transparent;
 }
 
 .mqc-judgment__value--pass {
@@ -318,5 +343,19 @@ body {
 @media (min-width: 480px) {
   .mqc-header__title {
     flex: 1 1 auto;
+  }
+}
+
+@media (max-width: 420px) {
+  .mqc-row--quad {
+    flex-wrap: wrap;
+  }
+
+  .mqc-field--quarter {
+    flex: 1 1 calc(50% - 5px);
+  }
+
+  .mqc-field__label {
+    font-size: 12px;
   }
 }

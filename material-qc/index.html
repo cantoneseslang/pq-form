@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>原材料 QC（測厚）紀錄</title>
   <link rel="icon" href="../logo.png" type="image/png" />
-  <link rel="stylesheet" href="material-qc.css?v=2" />
+  <link rel="stylesheet" href="material-qc.css?v=3" />
 </head>
 <body>
   <header class="mqc-header">
@@ -17,68 +17,70 @@
   <main class="mqc-main">
     <form id="materialQcForm" class="mqc-form" novalidate>
       <section class="mqc-section">
-        <h2 class="mqc-section__title">基本資料</h2>
+        <div class="mqc-row">
+          <label class="mqc-field mqc-field--half">
+            <span class="mqc-field__label">入倉日期</span>
+            <input id="receiptDate" name="receiptDate" type="date" class="mqc-input" />
+          </label>
 
-        <label class="mqc-field">
-          <span class="mqc-field__label">入倉日期</span>
-          <input id="receiptDate" name="receiptDate" type="date" class="mqc-input" />
-        </label>
-
-        <label class="mqc-field">
-          <span class="mqc-field__label">單號 <span class="mqc-required">*</span></span>
-          <div class="mqc-lot-row">
-            <span id="lotPrefix" class="mqc-lot-prefix">KS#----</span>
-            <input id="lotSuffix" name="lotSuffix" type="text" class="mqc-input mqc-lot-suffix" inputmode="numeric" maxlength="3" pattern="[0-9]{3}" placeholder="001" autocomplete="off" required />
+          <div class="mqc-field mqc-field--half">
+            <span class="mqc-field__label">單號 <span class="mqc-required">*</span></span>
+            <div class="mqc-lot-row">
+              <span id="lotPrefix" class="mqc-lot-prefix">KS#----</span>
+              <input id="lotSuffix" name="lotSuffix" type="text" class="mqc-input mqc-lot-suffix" inputmode="numeric" maxlength="3" pattern="[0-9]{3}" placeholder="001" autocomplete="off" required />
+            </div>
           </div>
-        </label>
+        </div>
 
-        <label class="mqc-field">
-          <span class="mqc-field__label">材料厚度</span>
-          <select id="materialThickness" name="materialThickness" class="mqc-input">
-            <option value="">— 請選擇 —</option>
-            <option value="0.3">0.3</option>
-            <option value="0.4">0.4</option>
-            <option value="0.4D">0.4D</option>
-            <option value="0.5">0.5</option>
-            <option value="0.6">0.6</option>
-            <option value="0.8">0.8</option>
-            <option value="0.8A">0.8A</option>
-            <option value="1.0">1.0</option>
-            <option value="1.0A">1.0A</option>
-            <option value="1.2">1.2</option>
-            <option value="1.5">1.5</option>
-            <option value="1.5A">1.5A</option>
-            <option value="3.0">3.0</option>
-          </select>
-        </label>
+        <div class="mqc-row">
+          <label class="mqc-field mqc-field--half">
+            <span class="mqc-field__label">材料厚度</span>
+            <select id="materialThickness" name="materialThickness" class="mqc-input">
+              <option value="">— 請選擇 —</option>
+              <option value="0.3">0.3</option>
+              <option value="0.4">0.4</option>
+              <option value="0.4D">0.4D</option>
+              <option value="0.5">0.5</option>
+              <option value="0.6">0.6</option>
+              <option value="0.8">0.8</option>
+              <option value="0.8A">0.8A</option>
+              <option value="1.0">1.0</option>
+              <option value="1.0A">1.0A</option>
+              <option value="1.2">1.2</option>
+              <option value="1.5">1.5</option>
+              <option value="1.5A">1.5A</option>
+              <option value="3.0">3.0</option>
+            </select>
+          </label>
 
-        <label class="mqc-field">
-          <span class="mqc-field__label">材料闊度</span>
-          <div class="mqc-width-row">
-            <input id="materialWidth" name="materialWidth" type="text" class="mqc-input mqc-width-input" inputmode="numeric" maxlength="3" pattern="[0-9]{3}" placeholder="121" autocomplete="off" />
-            <span class="mqc-width-unit">mm</span>
-          </div>
-        </label>
+          <label class="mqc-field mqc-field--half">
+            <span class="mqc-field__label">材料闊度</span>
+            <div class="mqc-width-row">
+              <input id="materialWidth" name="materialWidth" type="text" class="mqc-input mqc-width-input" inputmode="numeric" maxlength="3" pattern="[0-9]{3}" placeholder="121" autocomplete="off" />
+              <span class="mqc-width-unit">mm</span>
+            </div>
+          </label>
+        </div>
 
-        <label class="mqc-field">
-          <span class="mqc-field__label">供貨商</span>
-          <select id="supplier" name="supplier" class="mqc-input">
-            <option value="">— 請選擇 —</option>
-            <option value="F">F</option>
-            <option value="C">C</option>
-            <option value="K">K</option>
-          </select>
-        </label>
+        <div class="mqc-row">
+          <label class="mqc-field mqc-field--half">
+            <span class="mqc-field__label">供貨商</span>
+            <select id="supplier" name="supplier" class="mqc-input">
+              <option value="">— 請選擇 —</option>
+              <option value="F">F</option>
+              <option value="C">C</option>
+              <option value="K">K</option>
+            </select>
+          </label>
 
-        <label class="mqc-field">
-          <span class="mqc-field__label">檢查員 <span class="mqc-required">*</span></span>
-          <input id="inspector" name="inspector" type="text" class="mqc-input" autocomplete="name" required />
-        </label>
+          <label class="mqc-field mqc-field--half">
+            <span class="mqc-field__label">檢查員 <span class="mqc-required">*</span></span>
+            <input id="inspector" name="inspector" type="text" class="mqc-input" autocomplete="name" required />
+          </label>
+        </div>
       </section>
 
-      <section class="mqc-section">
-        <h2 class="mqc-section__title">測厚計拍攝</h2>
-
+      <section class="mqc-section mqc-section--camera">
         <div class="mqc-camera">
           <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden />
           <button id="captureBtn" class="mqc-btn mqc-btn--camera" type="button" aria-label="拍攝測厚計">
@@ -99,30 +101,34 @@
       <section class="mqc-section">
         <h2 class="mqc-section__title">讀取結果（可編輯）</h2>
 
-        <label class="mqc-field">
-          <span class="mqc-field__label">基材 <span class="mqc-required">*</span></span>
-          <select id="substrate" name="substrate" class="mqc-input" required>
-            <option value="">— 請選擇 —</option>
-            <option value="鐵">鐵</option>
-            <option value="非鐵">非鐵</option>
-          </select>
-        </label>
+        <div class="mqc-row mqc-row--quad">
+          <label class="mqc-field mqc-field--quarter">
+            <span class="mqc-field__label">基材 <span class="mqc-required">*</span></span>
+            <select id="substrate" name="substrate" class="mqc-input mqc-input--compact" required>
+              <option value="">—</option>
+              <option value="鐵">鐵</option>
+              <option value="非鐵">非鐵</option>
+            </select>
+          </label>
 
-        <label class="mqc-field">
-          <span class="mqc-field__label">塗裝厚度 (μm) <span class="mqc-required">*</span></span>
-          <input id="thicknessUm" name="thicknessUm" type="text" inputmode="decimal" class="mqc-input" placeholder="例: 8.6" required />
-        </label>
+          <label class="mqc-field mqc-field--quarter">
+            <span class="mqc-field__label">塗裝厚度 <span class="mqc-required">*</span></span>
+            <input id="thicknessUm" name="thicknessUm" type="text" inputmode="decimal" class="mqc-input mqc-input--compact" placeholder="8.6" required />
+          </label>
 
-        <label class="mqc-field">
-          <span class="mqc-field__label">基準 (μm)</span>
-          <select id="standardUm" name="standardUm" class="mqc-input">
-            <option value="">— 請選擇 —</option>
-          </select>
-        </label>
+          <label class="mqc-field mqc-field--quarter">
+            <span class="mqc-field__label">基準 (μm)</span>
+            <select id="standardUm" name="standardUm" class="mqc-input mqc-input--compact">
+              <option value="">—</option>
+            </select>
+          </label>
 
-        <div id="judgmentBox" class="mqc-judgment" hidden>
-          <span id="judgmentLabel" class="mqc-judgment__label">判定</span>
-          <span id="judgmentValue" class="mqc-judgment__value">—</span>
+          <div class="mqc-field mqc-field--quarter">
+            <span class="mqc-field__label">判定</span>
+            <div id="judgmentBox" class="mqc-judgment-inline">
+              <span id="judgmentValue" class="mqc-judgment__value mqc-judgment__value--empty">—</span>
+            </div>
+          </div>
         </div>
       </section>
 
@@ -157,6 +163,6 @@
     </form>
   </main>
 
-  <script src="app.js?v=2"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>
