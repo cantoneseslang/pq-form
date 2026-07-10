@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>原材料 QC（測厚）紀錄</title>
   <link rel="icon" href="../logo.png" type="image/png" />
-  <link rel="stylesheet" href="material-qc.css?v=3" />
+  <link rel="stylesheet" href="material-qc.css?v=4" />
 </head>
 <body>
   <header class="mqc-header">
@@ -13,17 +13,16 @@
     <img class="mqc-header__logo" src="../logo.png" alt="KIRII" />
     <h1 class="mqc-header__title">原材料 QC（測厚）紀錄</h1>
   </header>
-
   <main class="mqc-main">
     <form id="materialQcForm" class="mqc-form" novalidate>
       <section class="mqc-section">
         <div class="mqc-row">
-          <label class="mqc-field mqc-field--half">
+          <label class="mqc-field mqc-field--date">
             <span class="mqc-field__label">入倉日期</span>
-            <input id="receiptDate" name="receiptDate" type="date" class="mqc-input" />
+            <input id="receiptDate" name="receiptDate" type="date" class="mqc-input mqc-input--date" />
           </label>
 
-          <div class="mqc-field mqc-field--half">
+          <div class="mqc-field mqc-field--lot">
             <span class="mqc-field__label">單號 <span class="mqc-required">*</span></span>
             <div class="mqc-lot-row">
               <span id="lotPrefix" class="mqc-lot-prefix">KS#----</span>
