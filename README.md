@@ -14,13 +14,13 @@ vercel_minimal/pq-form 配下一式が GitHub（cantoneseslang/pq-form）に pus
 |------|------|------|
 | `GEMINI_API_KEY` | はい | [Google AI Studio](https://aistudio.google.com/apikey) の API キー |
 | `RAW_MATERIAL_QC_DRIVE_FOLDER_ID` | はい | 写真保存先 Google Drive フォルダ ID |
-| `RAW_MATERIAL_QC_SHEET_ID` | いいえ | 記録先スプレッドシート ID（省略時 `PQFORM_SHEET_ID`） |
-| `RAW_MATERIAL_QC_SHEET_NAME` | いいえ | タブ名（省略時 `raw-material-qc`） |
+| `RAW_MATERIAL_QC_SHEET_ID` | いいえ | 記録先スプレッドシート ID（省略時 `PQFORM_SHEET_ID` = `1u_fsEVAumMySLx8fZdMP5M4jgHiGG6ncPjFEXSXHQ1M`） |
+| `RAW_MATERIAL_QC_SHEET_NAME` | いいえ | タブ名（省略時 `RAW_MATERIAL_QC`） |
 | `GEMINI_MODEL` | いいえ | 省略時 `gemini-2.0-flash` |
 
 ### 事前設定
 
 1. Google Drive にフォルダを作成し、サービスアカウント（`GOOGLE_SA_JSON` の `client_email`）を「編集者」で共有
 2. フォルダ URL の `folders/` 以降が `RAW_MATERIAL_QC_DRIVE_FOLDER_ID`
-3. 初回 submit 時に `raw-material-qc` タブが自動作成されます
+3. 初回 submit 時に `RAW_MATERIAL_QC` タブが自動作成されます（[PQ-Form スプレッドシート](https://docs.google.com/spreadsheets/d/1u_fsEVAumMySLx8fZdMP5M4jgHiGG6ncPjFEXSXHQ1M/edit)）
 
