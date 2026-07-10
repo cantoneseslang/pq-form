@@ -20,13 +20,12 @@ vercel_minimal/pq-form 配下一式が GitHub（cantoneseslang/pq-form）に pus
 | `RAW_MATERIAL_QC_SHEET_NAME` | いいえ | タブ名（省略時 `RAW_MATERIAL_QC`） |
 | `GEMINI_MODEL` | いいえ | 省略時 `gemini-2.5-flash` |
 
-### 事前設定（相片 → Google Drive）
+### 事前設定（相片 → Google Drive のみ）
 
-1. Google Workspace で **共享雲端硬碟**（Shared Drive）を作成
-2. その中にフォルダを作成（例: `material-qc-photos`）
-3. サービスアカウント `pq-form@kirii-sales.iam.gserviceaccount.com` を **內容管理員** 以上で追加
-4. フォルダ URL の `folders/` 以降を `RAW_MATERIAL_QC_DRIVE_FOLDER_ID` に設定
-5. **個人「我的雲端硬碟」フォルダは使用不可**（サービスアカウント制限）
-6. Drive 失敗時のみ Supabase Storage にフォールバック
-7. 初回 submit 時に `RAW_MATERIAL_QC` タブが自動作成されます（[PQ-Form スプレッドシート](https://docs.google.com/spreadsheets/d/1u_fsEVAumMySLx8fZdMP5M4jgHiGG6ncPjFEXSXHQ1M/edit)）
+1. Google Drive にフォルダを作成（例: `material-qc-photos`）
+2. Vercel に設定:
+   - `RAW_MATERIAL_QC_DRIVE_FOLDER_ID` = フォルダ ID
+   - `GOOGLE_DRIVE_DELEGATED_USER` = そのフォルダの所有者メール
+3. Google Admin で Domain-wide Delegation を有効化（サービスアカウント + Drive スコープ）
+4. **Supabase には保存しません**
 
