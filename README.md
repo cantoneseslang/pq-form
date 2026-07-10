@@ -13,16 +13,20 @@ vercel_minimal/pq-form 配下一式が GitHub（cantoneseslang/pq-form）に pus
 | 変数 | 必須 | 説明 |
 |------|------|------|
 | `GEMINI_API_KEY` | はい | [Google AI Studio](https://aistudio.google.com/apikey) の API キー |
-| `RAW_MATERIAL_QC_DRIVE_FOLDER_ID` | いいえ | 写真の Drive 保存（任意・Supabase 失敗時のフォールバック） |
-| `RAW_MATERIAL_QC_STORAGE_BUCKET` | いいえ | Supabase Storage バケット名（省略時 `material-qc`） |
-| `GOOGLE_DRIVE_DELEGATED_USER` | いいえ | Drive 保存時の Workspace ユーザー（ドメイン委任） |
+| `RAW_MATERIAL_QC_DRIVE_FOLDER_ID` | はい | **共享雲端硬碟**（Shared Drive）内フォルダ ID |
+| `RAW_MATERIAL_QC_STORAGE_BUCKET` | いいえ | Supabase フォールバック用バケット名（省略時 `material-qc`） |
+| `GOOGLE_DRIVE_DELEGATED_USER` | いいえ | （通常不要）Shared Drive 利用時は未設定で OK |
 | `RAW_MATERIAL_QC_SHEET_ID` | いいえ | 記録先スプレッドシート ID（省略時 `PQFORM_SHEET_ID` = `1u_fsEVAumMySLx8fZdMP5M4jgHiGG6ncPjFEXSXHQ1M`） |
 | `RAW_MATERIAL_QC_SHEET_NAME` | いいえ | タブ名（省略時 `RAW_MATERIAL_QC`） |
 | `GEMINI_MODEL` | いいえ | 省略時 `gemini-2.5-flash` |
 
-### 事前設定
+### 事前設定（相片 → Google Drive）
 
-1. 写真は **Supabase Storage**（`material-qc` バケット）に保存し、公開 URL を Sheets に記録
-2. （任意）Drive フォルダへも保存したい場合は `RAW_MATERIAL_QC_DRIVE_FOLDER_ID` を設定
-3. 初回 submit 時に `RAW_MATERIAL_QC` タブが自動作成されます（[PQ-Form スプレッドシート](https://docs.google.com/spreadsheets/d/1u_fsEVAumMySLx8fZdMP5M4jgHiGG6ncPjFEXSXHQ1M/edit)）
+1. Google Workspace で **共享雲端硬碟**（Shared Drive）を作成
+2. その中にフォルダを作成（例: `material-qc-photos`）
+3. サービスアカウント `pq-form@kirii-sales.iam.gserviceaccount.com` を **內容管理員** 以上で追加
+4. フォルダ URL の `folders/` 以降を `RAW_MATERIAL_QC_DRIVE_FOLDER_ID` に設定
+5. **個人「我的雲端硬碟」フォルダは使用不可**（サービスアカウント制限）
+6. Drive 失敗時のみ Supabase Storage にフォールバック
+7. 初回 submit 時に `RAW_MATERIAL_QC` タブが自動作成されます（[PQ-Form スプレッドシート](https://docs.google.com/spreadsheets/d/1u_fsEVAumMySLx8fZdMP5M4jgHiGG6ncPjFEXSXHQ1M/edit)）
 
