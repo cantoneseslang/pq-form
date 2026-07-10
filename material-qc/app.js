@@ -105,7 +105,7 @@
       reader.onload = () => {
         const img = new Image();
         img.onload = () => {
-          const maxWidth = 1600;
+          const maxWidth = 1200;
           const scale = img.width > maxWidth ? maxWidth / img.width : 1;
           const width = Math.round(img.width * scale);
           const height = Math.round(img.height * scale);
@@ -115,7 +115,7 @@
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
           const mimeType = 'image/jpeg';
-          const dataUrl = canvas.toDataURL(mimeType, 0.85);
+          const dataUrl = canvas.toDataURL(mimeType, 0.75);
           resolve({
             dataUrl,
             base64: dataUrl.split(',')[1] || '',
@@ -276,8 +276,7 @@
 
       let msg = `記録しました（行 ${data.row || '—'}）`;
       if (data.photoUrl) msg += '。写真を保存しました。';
-      else if (data.photoError) msg += `。写真保存失敗: ${data.photoError}`;
-      showMessage(msg, data.photoError ? 'error' : 'ok');
+      showMessage(msg, 'ok');
 
       lotNo.value = '';
       materialSpec.value = '';
