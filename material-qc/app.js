@@ -276,7 +276,8 @@
 
       let msg = `記録しました（行 ${data.row || '—'}）`;
       if (data.photoUrl) msg += '。写真を保存しました。';
-      showMessage(msg, 'ok');
+      else if (data.photoError) msg += `。写真保存失敗: ${data.photoError}`;
+      showMessage(msg, data.photoError ? 'error' : 'ok');
 
       lotNo.value = '';
       materialSpec.value = '';
