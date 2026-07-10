@@ -41,11 +41,15 @@ export default async function handler(req, res) {
     const result = await submitMaterialQcRecord({
       receiptDate: String(body.receiptDate ?? '').trim(),
       lotNo: String(body.lotNo ?? '').trim(),
+      materialThickness: String(body.materialThickness ?? '').trim(),
+      materialWidth: String(body.materialWidth ?? '').trim(),
       materialSpec: String(body.materialSpec ?? '').trim(),
       supplier: String(body.supplier ?? '').trim(),
       inspector: String(body.inspector ?? '').trim(),
       substrate: String(body.substrate ?? '').trim(),
       thicknessUm: parseFloat(body.thicknessUm),
+      standardUm: Number.isFinite(parseFloat(body.standardUm)) ? parseFloat(body.standardUm) : null,
+      judgment: String(body.judgment ?? '').trim(),
       imageBase64: body.imageBase64 || '',
       mimeType: body.mimeType || 'image/jpeg',
     });
