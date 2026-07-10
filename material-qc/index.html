@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>原材料 QC — 測厚計読取</title>
+  <link rel="icon" href="../logo.png" type="image/png" />
+  <link rel="stylesheet" href="material-qc.css?v=1" />
+</head>
+<body>
+  <header class="mqc-header">
+    <a class="mqc-header__back" href="/">← PQ-Form</a>
+    <img class="mqc-header__logo" src="../logo.png" alt="KIRII" />
+    <h1 class="mqc-header__title">原材料 QC（測厚）</h1>
+  </header>
+
+  <main class="mqc-main">
+    <p class="mqc-intro">測厚計の LCD を撮影すると、基材（鉄）と塗装厚（μm）を自動読取します。</p>
+
+    <form id="materialQcForm" class="mqc-form" novalidate>
+      <section class="mqc-section">
+        <h2 class="mqc-section__title">基本情報</h2>
+
+        <label class="mqc-field">
+          <span class="mqc-field__label">入庫日</span>
+          <input id="receiptDate" name="receiptDate" type="date" class="mqc-input" />
+        </label>
+
+        <label class="mqc-field">
+          <span class="mqc-field__label">ロット番号 <span class="mqc-required">*</span></span>
+          <input id="lotNo" name="lotNo" type="text" class="mqc-input" autocomplete="off" required />
+        </label>
+
+        <label class="mqc-field">
+          <span class="mqc-field__label">材料規格</span>
+          <input id="materialSpec" name="materialSpec" type="text" class="mqc-input" placeholder="例: 0.8mm × 1219mm G90" autocomplete="off" />
+        </label>
+
+        <label class="mqc-field">
+          <span class="mqc-field__label">仕入先</span>
+          <input id="supplier" name="supplier" type="text" class="mqc-input" autocomplete="off" />
+        </label>
+
+        <label class="mqc-field">
+          <span class="mqc-field__label">検査員 <span class="mqc-required">*</span></span>
+          <input id="inspector" name="inspector" type="text" class="mqc-input" autocomplete="name" required />
+        </label>
+      </section>
+
+      <section class="mqc-section">
+        <h2 class="mqc-section__title">測厚計撮影</h2>
+
+        <div class="mqc-camera">
+          <input id="cameraInput" type="file" accept="image/*" capture="environment" hidden />
+          <button id="captureBtn" class="mqc-btn mqc-btn--primary" type="button">測厚計を撮影</button>
+          <button id="retakeBtn" class="mqc-btn" type="button" hidden>再撮影</button>
+        </div>
+
+        <div id="previewWrap" class="mqc-preview" hidden>
+          <img id="previewImg" class="mqc-preview__img" alt="測厚計プレビュー" />
+          <p id="scanStatus" class="mqc-scan-status" hidden></p>
+        </div>
+      </section>
+
+      <section class="mqc-section">
+        <h2 class="mqc-section__title">読取結果（編集可）</h2>
+
+        <label class="mqc-field">
+          <span class="mqc-field__label">基材 <span class="mqc-required">*</span></span>
+          <select id="substrate" name="substrate" class="mqc-input" required>
+            <option value="">— 選択 —</option>
+            <option value="鉄">鉄</option>
+            <option value="非鉄">非鉄</option>
+          </select>
+        </label>
+
+        <label class="mqc-field">
+          <span class="mqc-field__label">塗装厚 (μm) <span class="mqc-required">*</span></span>
+          <input id="thicknessUm" name="thicknessUm" type="text" inputmode="decimal" class="mqc-input" placeholder="例: 13.5" required />
+        </label>
+      </section>
+
+      <div class="mqc-actions">
+        <button id="submitBtn" class="mqc-btn mqc-btn--submit" type="submit">記録する</button>
+        <button id="clearBtn" class="mqc-btn mqc-btn--ghost" type="button">クリア</button>
+      </div>
+
+      <p id="formMessage" class="mqc-message" hidden></p>
+    </form>
+  </main>
+
+  <script src="app.js?v=1"></script>
+</body>
+</html>
